@@ -1,0 +1,776 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Offline Bundle QR Scanner - Fast & Torch + Loading Flow</title>
+  <style>
+    body{font-family:Arial,Helvetica,sans-serif;background:#f3f4f6;margin:0;padding:12px;display:flex;justify-content:center}
+    .wrap{width:100%;max-width:960px}
+    .card{background:#fff;padding:12px;border-radius:10px;box-shadow:0 6px 20px rgba(0,0,0,0.08)}
+    h1{font-size:18px;margin:4px 0 10px;text-align:center}
+    .controls{display:flex;gap:8px;flex-wrap:wrap}
+    button{flex:1;padding:10px;border-radius:8px;border:0;background:#2563eb;color:#fff;font-weight:600;cursor:pointer}
+    button.ghost{background:#f59e0b}
+    button.danger{background:#ef4444}
+    button.small{flex:unset;padding:8px 10px;font-size:13px}
+    #btn-torch{display:none; background:#ffcc00;color:#000;font-weight:600;}
+    #reader{width:100%;margin-top:10px;border-radius:8px;overflow:hidden;display:flex;justify-content:center;align-items:center}
+    video{max-width:100%;border-radius:8px}
+    canvas{display:none}
+    textarea{width:100%;padding:8px;border-radius:8px;border:1px solid #e5e7eb;margin-top:10px}
+    .resultBox,.summary{margin-top:12px;padding:8px;background:#fff;border-radius:8px;border:1px solid #e6eefc;max-height:260px;overflow:auto}
+    .logItem{padding:8px;border-radius:6px;background:#eef2ff;margin-bottom:8px;font-family:monospace}
+    .spec{font-weight:700;margin-top:8px;color:#111827}
+    .chargeRow{display:flex;justify-content:space-between;gap:8px;margin:6px 0;padding:6px 8px;background:#f8fafc;border-radius:6px}
+    .bundles{font-family:monospace;font-size:13px;color:#064e3b;margin-left:6px}
+    .muted{color:#6b7280;font-size:13px}
+    .footer{display:flex;justify-content:space-between;align-items:center;margin-top:10px}
+    /* pages */
+    .page{display:none}
+    .page.active{display:block}
+    .two-col{display:grid;grid-template-columns:1fr 420px;gap:12px}
+    .form-row{display:flex;gap:8px;margin-bottom:8px}
+    .form-row input,.form-row select, textarea{flex:1;padding:8px;border-radius:6px;border:1px solid #e5e7eb}
+    .history-list{max-height:400px;overflow:auto}
+    .historyItem{padding:8px;border-radius:6px;border:1px solid #e6eefc;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center}
+    .preview-modal{position:fixed;left:0;top:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center}
+    .preview-card{background:#fff;padding:18px;border-radius:8px;max-width:760px;width:100%}
+    .print-layout{font-family:Arial,Helvetica,sans-serif;background:#fff;padding:12px;border-radius:6px}
+    .small-muted{font-size:12px;color:#6b7280}
+    .flag-box{font-size:20px;padding-left:6px}
+    .left-col{min-width:280px}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <h1>Offline Bundle QR Scanner — Loading Flow & History</h1>
+
+      <!-- ===== START PAGE ===== -->
+      <div id="page-start" class="page active">
+        <div style="display:flex;gap:10px;align-items:center">
+          <div style="flex:1">
+            <p class="muted">Choose mode:</p>
+            <div class="controls" style="margin-bottom:10px">
+              <button id="opt-loading">Loading (with form)</button>
+              <button id="opt-scan-only" class="ghost">Scan Only</button>
+            </div>
+            <div class="muted small-muted">Other actions</div>
+            <div style="display:flex;gap:8px;margin-top:8px">
+              <button id="open-history" class="small">History</button>
+              <button id="btn-export" class="ghost small">Export CSV</button>
+              <button id="btn-reset" class="danger small">Reset Counts</button>
+            </div>
+          </div>
+          <div style="width:260px">
+            <div style="background:#f8fafc;padding:10px;border-radius:8px">
+              <div class="small-muted">Total bundles</div>
+              <div style="font-size:22px;font-weight:700;margin-top:6px" id="totalCount">0</div>
+              <div class="small-muted" style="margin-top:8px">Recent scans kept: 80</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== LOADING FORM PAGE ===== -->
+      <div id="page-loading" class="page">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div style="font-weight:700">Cargo Loading Form</div>
+          <div style="display:flex;gap:8px">
+            <button id="back-to-start" class="ghost small">Back</button>
+          </div>
+        </div>
+
+        <div style="margin-top:10px" class="two-col">
+          <div>
+            <div class="form-row">
+              <input id="input-delivery" placeholder="Delivery No." />
+              <input id="input-date" placeholder="Date" readonly />
+            </div>
+            <div class="form-row">
+              <input id="input-vehicle-no" placeholder="Vehicle Number" />
+              <input id="input-time" placeholder="Time" readonly />
+            </div>
+            <div class="form-row">
+              <input id="input-country" placeholder="Vehicle Region (type country name or 2-letter code)" />
+              <div class="flag-box" id="auto-flag" title="Flag will appear when you type country / ISO code"></div>
+            </div>
+            <div class="form-row">
+              <input id="input-driver" placeholder="Driver Name (Optional)" />
+            </div>
+
+            <div style="margin-top:6px">
+              <button id="proceed-to-scan" class="ghost">Proceed to Scanner</button>
+              <button id="save-form" class="small" style="margin-left:8px">Save Form (Save to History - without scanning)</button>
+            </div>
+          </div>
+
+          <div class="left-col">
+            <div style="background:#f8fafc;padding:8px;border-radius:8px">
+              <div class="small-muted">Form preview</div>
+              <div style="margin-top:8px;padding:8px;background:#fff;border-radius:6px" id="form-preview">
+                <!-- preview filled by JS -->
+              </div>
+              <div style="margin-top:8px" class="small-muted">Loaded cargo group will appear in scanner summary after scanning.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== SCANNER PAGE (original scanner preserved) ===== -->
+      <div id="page-scanner" class="page">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div style="font-weight:700">Scanner</div>
+          <div style="display:flex;gap:8px">
+            <button id="open-preview" class="small">Preview & Print</button>
+            <button id="save-record" class="small ghost">Save Record</button>
+            <button id="back-to-start-2" class="small">Exit</button>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:12px;margin-top:10px">
+          <div style="flex:1">
+            <div class="controls" style="margin-bottom:8px">
+              <button id="btn-start">Start Scanner</button>
+              <button id="btn-stop" style="display:none" class="ghost">Stop</button>
+             <button id="btn-reset-2" class="danger">Reset Counts</button>
+              <button id="btn-torch">Torch ON</button>
+            </div>
+
+            <div id="reader">
+              <video id="video" playsinline autoplay muted style="display:none"></video>
+              <canvas id="canvas"></canvas>
+              <div id="no-camera" style="padding:12px;color:#6b7280">Camera not started</div>
+            </div>
+
+            <textarea id="manualQr" placeholder="Or paste multi-line QR content here (example):&#10;4006463&#10;FP-D16-500-DCL&#10;[CUKC{...}]&#10;[CUKB{...}]&#10;[CUKR0008226/020]"></textarea>
+            <div style="display:flex;gap:8px;margin-top:8px">
+              <button id="btn-add-manual">Parse & Add</button>
+              <button id="btn-export-csv" class="ghost">Export CSV</button>
+            </div>
+
+          </div>
+
+          <div style="width:420px">
+            <div class="resultBox" id="scansBox">
+              <strong class="muted">Recent scans (newest first)</strong>
+              <div id="scansList"></div>
+            </div>
+
+            <div class="summary" id="summaryBox">
+              <strong class="muted">Grouped summary</strong>
+              <div id="grouped"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="footer" style="margin-top:10px">
+          <div class="muted">Total bundles: <span id="totalCount2">0</span></div>
+        </div>
+      </div>
+
+      <!-- ===== HISTORY PAGE ===== -->
+      <div id="page-history" class="page">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div style="font-weight:700">History / Reports</div>
+          <div style="display:flex;gap:8px">
+            <button id="back-from-history" class="small">Back</button>
+            <button id="del-all-history" class="danger small">Delete All</button>
+          </div>
+        </div>
+
+        <div style="margin-top:10px;display:flex;gap:12px">
+          <div style="flex:1">
+            <div class="history-list" id="historyList"></div>
+          </div>
+          <div style="width:360px">
+            <div style="background:#f8fafc;padding:8px;border-radius:8px">
+              <div class="small-muted">Selected record</div>
+              <div id="historySelected" style="margin-top:8px;background:#fff;padding:8px;border-radius:6px;min-height:160px"></div>
+              <div style="display:flex;gap:8px;margin-top:8px">
+                <button id="history-delete" class="danger small">Delete Selected</button>
+                <button id="history-reopen" class="ghost small">Reopen in Scanner</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== PREVIEW MODAL (hidden) ===== -->
+      <div id="previewModal" style="display:none" class="preview-modal">
+        <div class="preview-card">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <div style="font-weight:700">Print Preview</div>
+            <div>
+              <button id="closePreview" class="small">Close</button>
+              <button id="doPrint" class="ghost small">Print</button>
+              <button id="doSend" class="small">Send</button>
+            </div>
+          </div>
+          <div style="margin-top:12px" id="previewContent">
+            <!-- print layout -->
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+<script>
+/* -------------------------
+   Core scanner code (kept essentially same & unchanged detection speed)
+   ------------------------- */
+
+let countsBySpec={}, totalBundles=0, recentScans=[], scannerActive=false, stream=null,chargeOrderBySpec = {}, video=document.getElementById('video'), canvas=document.getElementById('canvas'), ctx=canvas.getContext('2d'), barcodeDetector=null, detectInterval=null, torchOn=false, track=null;
+
+/* beep/vibrate helpers */
+function playBeep(){try{const ctxA=new (window.AudioContext||window.webkitAudioContext)(); const o=ctxA.createOscillator(); o.type='sine'; o.frequency.value=700; o.connect(ctxA.destination); o.start(); setTimeout(()=>o.stop(),120);}catch(e){}}
+function doVibrate(){if(navigator.vibrate) navigator.vibrate(140);}
+function showToast(msg){console.log('TOAST:',msg);}
+
+/* parse QR text - unchanged logic */
+function parseQrText(raw){
+  const text=String(raw).replace(/\r/g,'').trim();
+  if(!text) return {ok:false,reason:'empty'};
+  const lines = text
+  .split(/\n|;/)
+  .map(s => s.replace(/[^\x20-\x7E]/g, '').trim())
+  .filter(s => s.length > 0);
+  let charge=null,spec=null,bundleRef=null,bundleNo='';
+  for(const t of lines){ if(/^\s*(4\d{6}|5\d{6})\s*$/.test(t)){charge=t;break;} }
+  for(const t of lines.slice().reverse()){
+    const m=t.match(/\[CUKR[^\]]*\]/i);
+    if(m){bundleRef=m[0]; const m2=bundleRef.match(/\/(\d{1,})\]?$/); if(m2) bundleNo=m2[1]; break;}
+  }
+  for(const t of lines){
+    if(t===charge) continue;
+    if(/^\[.*\]$/.test(t)) continue;
+    if(/[A-Za-z0-9\-]/.test(t) && t.length>2){spec=t;break;}
+  }
+  if(!spec && lines.length>=2) spec=lines[1];
+  if(!charge || !bundleRef || !spec) return {ok:false,reason:'missing',charge,spec,bundleRef};
+  return {ok:true,charge,spec:spec||'UNKNOWN',bundleRef,bundleNo};
+}
+
+/* add parsed -> counts & recent scans (unchanged behavior for duplicates etc) */
+function addParsed(parsed, raw){
+  const {charge,spec,bundleRef,bundleNo}=parsed;
+  countsBySpec[spec] = countsBySpec[spec] || {};
+chargeOrderBySpec[spec] = chargeOrderBySpec[spec] || [];
+
+if(!countsBySpec[spec][charge]){
+  countsBySpec[spec][charge] = new Set();
+  chargeOrderBySpec[spec].push(charge); // store scan order
+}
+  const set=countsBySpec[spec][charge];
+  const already=set.has(bundleRef);
+  if(!already){
+    set.add(bundleRef); totalBundles++; recentScans.unshift({time:new Date(),charge,spec,bundleRef,bundleNo,status:'added',raw});
+    playBeep(); doVibrate(); showToast('Added '+bundleRef);
+  } else {
+    recentScans.unshift({time:new Date(),charge,spec,bundleRef,bundleNo,status:'duplicate',raw});
+    try{const ctxA=new (window.AudioContext||window.webkitAudioContext)(); const o=ctxA.createOscillator(); o.frequency.value=300; o.connect(ctxA.destination); o.start(); setTimeout(()=>o.stop(),100);}catch(e){} doVibrate(); showToast('Duplicate '+bundleRef);
+  }
+  if(recentScans.length>80) recentScans.pop();
+  refreshUI();
+}
+
+/* refresh UI (keeps same style) */
+function refreshUI(){
+  const grouped=document.getElementById('grouped'); grouped.innerHTML='';
+  for(const spec of Object.keys(countsBySpec)){
+    const specDiv=document.createElement('div'); specDiv.className='spec'; specDiv.textContent=spec; grouped.appendChild(specDiv);
+    const charges=countsBySpec[spec];
+    for(const charge of chargeOrderBySpec[spec] || []){
+      const set=charges[charge];
+      const chargeRow=document.createElement('div'); chargeRow.className='chargeRow';
+      const left=document.createElement('div'); left.innerHTML=`<div style="font-weight:700">${charge}</div><div class="muted">${set.size} bundle(s)</div>`;
+      const right=document.createElement('div'); right.style.minWidth='120px'; right.innerHTML=Array.from(set).map(b=>`<div class="bundles">${b}</div>`).join('');
+      chargeRow.appendChild(left); chargeRow.appendChild(right); grouped.appendChild(chargeRow);
+    }
+  }
+
+  const scansList=document.getElementById('scansList'); scansList.innerHTML='';
+  for(const s of recentScans){
+    const el=document.createElement('div'); el.className='logItem';
+    el.innerHTML=`<div style="font-size:12px;color:#374151">${new Date(s.time).toLocaleTimeString()}</div><div>${s.charge} — ${s.spec}</div><div style="font-size:13px;margin-top:6px">${s.bundleRef} ${s.bundleNo?('(no:'+s.bundleNo+')'):''}</div><div style="margin-top:6px;font-size:12px;color:${s.status==='added'?'#065f46':'#92400e'}">${s.status==='added'
+  ? 'Added'
+  : s.status==='duplicate'
+    ? 'Duplicate (ignored)'
+    : 'Invalid QR (not added)'
+}</div>`;
+    scansList.appendChild(el);
+  }
+  document.getElementById('totalCount').textContent=totalBundles;
+  document.getElementById('totalCount2').textContent=totalBundles;
+}
+
+/* reset */
+function resetAll(){
+  if(!confirm('Clear all counts and scans?')) return;
+  countsBySpec={};
+chargeOrderBySpec={};
+totalBundles=0;
+recentScans=[]; refreshUI();
+}
+
+/* export CSV for counts */
+function exportCSV(){
+  let csv='Specification,ChargeNumber,BundleReference,BundleNo\n';
+  for(const spec of Object.keys(countsBySpec)){
+    const charges=countsBySpec[spec];
+    for(const charge of Object.keys(charges)){
+      for(const bundleRef of charges[charge]){
+        const m=bundleRef.match(/\/(\d+)\]?$/); const bno=m?m[1]:'';
+        csv+=`"${spec}","${charge}","${bundleRef}","${bno}"\n`;
+      }
+    }
+  }
+  const blob=new Blob([csv],{type:'text/csv'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='bundle_counts.csv'; a.click(); URL.revokeObjectURL(url);
+}
+
+/* manual parse button */
+document.getElementById('btn-add-manual').addEventListener('click',()=>{ const raw=document.getElementById('manualQr').value; if(!raw||!raw.trim()){ alert('Paste QR content first'); return; } const parsed=parseQrText(raw); if(!parsed.ok){alert('Could not parse QR content. Ensure charge and [CUKR...] present.'); return;} addParsed(parsed,raw); document.getElementById('manualQr').value='';});
+
+/* small CSV export button (scanner area) */
+document.getElementById('btn-export-csv').addEventListener('click',exportCSV);
+
+/* reset button used in multiple places */
+document.getElementById('btn-reset').addEventListener('click',resetAll);
+document.getElementById('btn-reset-2').addEventListener('click', resetAll);
+
+/* torch toggle */
+document.getElementById('btn-torch').addEventListener('click',async ()=>{
+  if(!track) return alert('Camera not ready');
+  torchOn=!torchOn;
+  try{ await track.applyConstraints({advanced:[{torch:torchOn}]}); document.getElementById('btn-torch').innerText = torchOn?'Torch OFF':'Torch ON'; }catch(e){alert('Torch not supported');}
+});
+
+/* START / STOP camera - keep behavior and detection interval unchanged (80ms) */
+async function startCamera(){
+  if(scannerActive) return;
+  try{
+    stream = await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment',width:{ideal:1920},height:{ideal:1080},focusMode:"continuous"}});
+    video.srcObject=stream; video.style.display='block'; document.getElementById('no-camera').style.display='none';
+    await video.play();
+    canvas.width=video.videoWidth || 640; canvas.height=video.videoHeight || 480;
+    track = stream.getVideoTracks()[0];
+    const caps = track.getCapabilities(); if(caps.torch) document.getElementById('btn-torch').style.display='inline-block';
+    if(window.BarcodeDetector && BarcodeDetector.getSupportedFormats){
+      const supported = await BarcodeDetector.getSupportedFormats().catch(_=>[]);
+      barcodeDetector = supported.includes('qr_code')? new BarcodeDetector({formats:['qr_code']}):new BarcodeDetector();
+    }
+    if(barcodeDetector){
+      detectInterval = setInterval(async ()=>{
+        try{
+          ctx.drawImage(video,0,0,canvas.width,canvas.height);
+          const img=ctx.getImageData(0,0,canvas.width,canvas.height);
+          const barcodeResults = await barcodeDetector.detect(img);
+          if(barcodeResults?.length>0) for(const br of barcodeResults) handleDecodedText(String(br.rawValue||br.rawValueText||br.rawValue||br.format));
+        }catch(e){console.log('detect error',e);}
+      },80); // <-- unchanged fast loop
+    }
+    scannerActive=true;
+    document.getElementById('btn-start').style.display='none';
+    document.getElementById('btn-stop').style.display='inline-block';
+  }catch(e){alert('Camera start error:'+e); stopCamera();}
+}
+function stopCamera(){
+  if(!scannerActive) return;
+  if(detectInterval) clearInterval(detectInterval); detectInterval=null;
+  if(stream) stream.getTracks().forEach(t=>t.stop()); stream=null; track=null;
+  video.pause(); video.srcObject=null; video.style.display='none'; document.getElementById('no-camera').style.display='block';
+  scannerActive=false;
+  document.getElementById('btn-start').style.display='inline-block'; document.getElementById('btn-stop').style.display='none';
+}
+async function handleDecodedText(decodedText){
+  if(!decodedText) return;
+
+  const recent = recentScans[0];
+  if(recent && recent.raw === decodedText && (new Date() - new Date(recent.time)) < 700) return;
+
+  const parsed = parseQrText(decodedText);
+
+  if(parsed.ok && parsed.charge && parsed.spec && parsed.bundleRef){
+    addParsed(parsed, decodedText);
+  } else {
+    recentScans.unshift({
+      time: new Date(),
+      charge: parsed.charge || '?',
+      spec: parsed.spec || '?',
+      bundleRef: parsed.bundleRef || '?',
+      bundleNo: parsed.bundleNo || '',
+      status: 'invalid',
+      raw: decodedText
+    });
+
+    refreshUI();
+
+    // error beep
+    try {
+      const ctxA = new (window.AudioContext || window.webkitAudioContext)();
+      const o = ctxA.createOscillator();
+      o.frequency.value = 250;
+      o.connect(ctxA.destination);
+      o.start();
+      setTimeout(() => o.stop(), 120);
+    } catch(e) {}
+
+    doVibrate();
+  }
+}
+document.getElementById('btn-start').addEventListener('click',startCamera);
+document.getElementById('btn-stop').addEventListener('click',stopCamera);
+
+/* -------------------------
+   UI + Page flow + Form + History + Preview/Print
+   ------------------------- */
+
+/* simple page router (single file multipage) */
+function showPage(id){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  const el=document.getElementById(id); if(el) el.classList.add('active');
+}
+
+/* start page actions */
+document.getElementById('opt-loading').addEventListener('click',()=>{
+  fillDateTimeInputs();
+  showPage('page-loading');
+});
+document.getElementById('opt-scan-only').addEventListener('click',()=>{
+  showPage('page-scanner');
+});
+document.getElementById('open-history').addEventListener('click',()=>{ renderHistory(); showPage('page-history'); });
+
+document.getElementById('back-to-start').addEventListener('click',()=>showPage('page-start'));
+document.getElementById('back-to-start-2').addEventListener('click',()=>{
+  // if camera on, stop it to free device
+  stopCamera();
+  showPage('page-start');
+});
+document.getElementById('back-from-history').addEventListener('click',()=>showPage('page-start'));
+
+/* form preview & auto date/time */
+function fillDateTimeInputs(){
+  const now=new Date();
+  document.getElementById('input-date').value = now.toLocaleDateString();
+  document.getElementById('input-time').value = now.toLocaleTimeString();
+  updateFormPreview();
+}
+document.getElementById('input-delivery').addEventListener('input',updateFormPreview);
+document.getElementById('input-vehicle-no').addEventListener('input',updateFormPreview);
+document.getElementById('input-country').addEventListener('input',()=>{ updateFlagFromCountryInput(); updateFormPreview(); });
+document.getElementById('input-driver').addEventListener('input',updateFormPreview);
+function updateFormPreview(){
+  const dv=document.getElementById('input-delivery').value||'___';
+  const vn=document.getElementById('input-vehicle-no').value||'___';
+  const reg=document.getElementById('input-country').value||'___';
+  const dr=document.getElementById('input-driver').value||'___';
+  const date=document.getElementById('input-date').value;
+  const time=document.getElementById('input-time').value;
+  document.getElementById('form-preview').innerHTML = `
+    <div style="font-weight:700">Cargo Loading</div>
+    <div class="small-muted">Date: ${date} &nbsp;&nbsp; Time: ${time}</div>
+    <hr style="margin:8px 0" />
+    <div><strong>Delivery No:</strong> ${dv}</div>
+    <div style="margin-top:6px"><strong>Vehicle No:</strong> ${vn}</div>
+    <div style="margin-top:6px"><strong>Region:</strong> ${reg} <span id="previewFlag" class="flag-box"></span></div>
+    <div style="margin-top:6px"><strong>Driver:</strong> ${dr}</div>
+    <hr style="margin-top:10px" />
+    <div class="small-muted">Loaded cargo group summary will appear after scanning.</div>
+  `;
+  // copy flag
+  document.getElementById('previewFlag').textContent = document.getElementById('auto-flag').textContent || '';
+}
+
+/* proceed to scanner from form */
+document.getElementById('proceed-to-scan').addEventListener('click',()=>{
+  showPage('page-scanner');
+  // keep the form data in a global currentForm object
+  currentForm = readForm();
+  // preview ref updated
+  updateFormPreview();
+});
+
+/* save form-only to history (no scanning) */
+function readForm(){
+  return {
+    delivery: document.getElementById('input-delivery').value || '',
+    vehicleNo: document.getElementById('input-vehicle-no').value || '',
+    region: document.getElementById('input-country').value || '',
+    flag: document.getElementById('auto-flag').textContent || '',
+    driver: document.getElementById('input-driver').value || '',
+    date: document.getElementById('input-date').value,
+    time: document.getElementById('input-time').value,
+    summaryCounts: JSON.parse(serializeCounts()) // snapshot
+  };
+}
+document.getElementById('save-form').addEventListener('click',()=>{
+  const f=readForm();
+  saveHistoryRecord({meta:f, created:new Date().toISOString()});
+  alert('Form saved into History.');
+});
+
+/* small helper: serialize countsBySpec into plain structure for storage */
+function serializeCounts(){
+  const out={};
+  for(const s of Object.keys(countsBySpec)){
+    out[s]={};
+    for(const c of Object.keys(countsBySpec[s])) out[s][c]=Array.from(countsBySpec[s][c]);
+  }
+  return JSON.stringify(out);
+}
+function restoreCountsFromSnapshot(snapshot){
+  countsBySpec={};
+  for(const s of Object.keys(snapshot||{})){
+    countsBySpec[s]={};
+    for(const c of Object.keys(snapshot[s])){
+      countsBySpec[s][c]= new Set(snapshot[s][c]);
+    }
+  }
+  // recompute totalBundles
+  totalBundles=0;
+  for(const s of Object.keys(countsBySpec)) for(const c of Object.keys(countsBySpec[s])) totalBundles += countsBySpec[s][c].size;
+  refreshUI();
+}
+
+/* preview modal: build print layout */
+function buildPreviewContent(){
+  const meta = currentForm || {delivery:'',vehicleNo:'',region:'',flag:'',driver:'',date:new Date().toLocaleDateString(),time:new Date().toLocaleTimeString()};
+  const summaryHtml = (() => {
+    let html='';
+    for(const spec of Object.keys(countsBySpec)){
+      html += `<div style="font-weight:700;margin-top:8px">${spec}</div>`;
+      for(const ch of Object.keys(countsBySpec[spec])){
+        html += `<div style="display:flex;justify-content:space-between;padding:4px 0"><div>${ch}</div><div>${countsBySpec[spec][ch].size} bundles</div></div>`;
+      }
+    }
+    if(!html) html = '<div class="small-muted">No bundles scanned yet.</div>';
+    return html;
+  })();
+
+  const created = meta.date || new Date().toLocaleDateString();
+  const time = meta.time || new Date().toLocaleTimeString();
+
+  const html = `
+    <div class="print-layout">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div><strong>Cargo Loading Form</strong><div class="small-muted">Loading Cargo</div></div>
+        <div class="small-muted">Date: ${created} &nbsp;&nbsp; Time: ${time}</div>
+      </div>
+      <hr />
+      <div style="margin-top:8px"><strong>Delivery Number:</strong> ${meta.delivery || '___'}</div>
+      <div style="margin-top:6px"><strong>Vehicle Number:</strong> ${meta.vehicleNo || '___'}</div>
+      <div style="margin-top:6px"><strong>Vehicle Region:</strong> ${meta.region || '___'} ${meta.flag?(' '+meta.flag):''}</div>
+      <div style="margin-top:6px"><strong>Driver Name:</strong> ${meta.driver || '___'}</div>
+      <hr />
+      <div style="margin-top:8px"><strong>Loaded Cargo (group summary)</strong></div>
+      <div>${summaryHtml}</div>
+      <hr style="margin-top:12px" />
+      <div class="small-muted">Generated by Offline Bundle QR Scanner</div>
+    </div>
+  `;
+  return html;
+}
+
+/* open preview modal */
+let currentForm = null;
+document.getElementById('open-preview').addEventListener('click',()=>{
+  // if no form filled (user came via scan-only), create meta from date/time only
+  if(!currentForm) {
+    currentForm = {delivery:'',vehicleNo:'',region:'',flag:'',driver:'',date:new Date().toLocaleDateString(),time:new Date().toLocaleTimeString()};
+  }
+  document.getElementById('previewContent').innerHTML = buildPreviewContent();
+  document.getElementById('previewModal').style.display='flex';
+});
+
+/* close preview */
+document.getElementById('closePreview').addEventListener('click',()=>document.getElementById('previewModal').style.display='none');
+
+/* print and send */
+document.getElementById('doPrint').addEventListener('click',()=>{
+  // open temporary window with print layout
+  const win = window.open('','_blank');
+  win.document.write('<html><head><title>Print</title></head><body>');
+  win.document.write(document.getElementById('previewContent').innerHTML);
+  win.document.write('</body></html>');
+  win.document.close();
+  win.focus();
+  // show print dialog
+  setTimeout(()=>{ win.print(); },300);
+});
+
+/* send (simulated) */
+document.getElementById('doSend').addEventListener('click',()=>{
+  // simulate send: here you can integrate network logic if wanted (kept client-only per requirements)
+  alert('Record "sent" (simulation). You can implement actual send logic where needed.');
+});
+
+/* save the record to history (including summary) */
+document.getElementById('save-record').addEventListener('click',()=>{
+  if(!currentForm){
+    currentForm = {delivery:'',vehicleNo:'',region:'',flag:'',driver:'',date:new Date().toLocaleDateString(),time:new Date().toLocaleTimeString()};
+  }
+  // snapshot of counts
+  const snapshot = JSON.parse(serializeCounts());
+  const rec = {meta:currentForm, summary:snapshot, created:new Date().toISOString(), totalBundles};
+  saveHistoryRecord(rec);
+  alert('Record saved to History.');
+});
+
+/* history storage helpers */
+const HISTORY_KEY = 'bundleHistory_v1';
+function loadHistory(){ try{ const raw=localStorage.getItem(HISTORY_KEY); return raw?JSON.parse(raw):[]; }catch(e){return [];} }
+function saveHistoryList(list){ localStorage.setItem(HISTORY_KEY, JSON.stringify(list)); }
+function saveHistoryRecord(rec){
+  const list = loadHistory();
+  list.unshift(rec);
+  // cap history length (optional) e.g. 300
+  if(list.length>500) list.pop();
+  saveHistoryList(list);
+  renderHistory();
+}
+
+/* render history list */
+let historySelectedIndex = null;
+function renderHistory(){
+  const list = loadHistory();
+  const out = document.getElementById('historyList'); out.innerHTML='';
+  if(list.length===0) out.innerHTML='<div class="small-muted">No history yet.</div>';
+  list.forEach((r,idx)=>{
+    const div=document.createElement('div'); div.className='historyItem';
+    const left=document.createElement('div'); left.style.flex='1';
+    const title = r.meta && r.meta.delivery ? `${r.meta.delivery} — ${r.meta.vehicleNo||'no vehicle'}` : `Record ${new Date(r.created).toLocaleString()}`;
+    left.innerHTML = `<div style="font-weight:700">${title}</div><div class="small-muted">${new Date(r.created).toLocaleString()}</div>`;
+    const right=document.createElement('div');
+    const btnSel=document.createElement('button'); btnSel.textContent='Select'; btnSel.className='small';
+    btnSel.addEventListener('click',()=>{ selectHistory(idx); });
+    right.appendChild(btnSel);
+    div.appendChild(left); div.appendChild(right);
+    out.appendChild(div);
+  });
+  // clear selected panel
+  document.getElementById('historySelected').innerHTML = '<div class="small-muted">Select a record to view details</div>';
+}
+
+/* show selected history */
+function selectHistory(idx){
+  historySelectedIndex = idx;
+  const list = loadHistory();
+  const r = list[idx];
+  if(!r) return;
+  const el = document.getElementById('historySelected');
+  const meta = r.meta || {};
+  let summaryHtml='';
+  if(r.summary){
+    for(const spec of Object.keys(r.summary)){ summaryHtml += `<div style="font-weight:700">${spec}</div>`; for(const c of Object.keys(r.summary[spec])) summaryHtml += `<div style="display:flex;justify-content:space-between;padding:4px 0"><div>${c}</div><div>${r.summary[spec][c].length} bundles</div></div>`; }
+  } else summaryHtml = '<div class="small-muted">No summary</div>';
+  el.innerHTML = `<div><strong>Delivery:</strong> ${meta.delivery||''}</div><div><strong>Vehicle:</strong> ${meta.vehicleNo||''} ${meta.flag?('<span class="flag-box">'+meta.flag+'</span>'):''}</div><div style="margin-top:8px"><strong>Driver:</strong> ${meta.driver||''}</div><div style="margin-top:8px"><strong>When:</strong> ${new Date(r.created).toLocaleString()}</div><hr />${summaryHtml}`;
+}
+
+/* history delete selected */
+document.getElementById('history-delete').addEventListener('click',()=>{
+  if(historySelectedIndex===null) return alert('Select a record first.');
+  if(!confirm('Delete selected history record?')) return;
+  const list = loadHistory();
+  list.splice(historySelectedIndex,1);
+  saveHistoryList(list);
+  historySelectedIndex = null;
+  renderHistory();
+});
+document.getElementById('history-reopen').addEventListener('click',()=>{
+  if(historySelectedIndex===null) return alert('Select a record first.');
+  const list = loadHistory();
+  const r = list[historySelectedIndex];
+  // restore counts and open scanner with the meta
+  if(r){
+    restoreCountsFromSnapshot(r.summary || {});
+    currentForm = r.meta || {};
+    // set form inputs to meta (if available)
+    if(currentForm){
+      document.getElementById('input-delivery').value = currentForm.delivery || '';
+      document.getElementById('input-vehicle-no').value = currentForm.vehicleNo || '';
+      document.getElementById('input-country').value = currentForm.region || '';
+      document.getElementById('input-driver').value = currentForm.driver || '';
+      document.getElementById('auto-flag').textContent = currentForm.flag || '';
+      fillDateTimeInputs();
+      updateFormPreview();
+    }
+    showPage('page-scanner');
+  }
+});
+
+/* delete all history */
+document.getElementById('del-all-history').addEventListener('click',()=>{
+  if(!confirm('Delete ALL history records?')) return;
+  saveHistoryList([]);
+  renderHistory();
+});
+
+/* export CSV (top-level) - uses same export function */
+document.getElementById('btn-export').addEventListener('click',exportCSV);
+
+/* -------------------------
+   Country name -> flag auto detection
+   Strategy:
+   - Accept 2-letter ISO (e.g. QA, qa) => convert to flag by Regional Indicator Symbols
+   - Provide a small lookup table for common country names -> ISO codes
+   - If not found, keep blank (user can still type emoji manually)
+   ------------------------- */
+const COUNTRY_LOOKUP = {
+  "qatar":"QA","uae":"AE","united arab emirates":"AE","saudi arabia":"SA","kuwait":"KW","oman":"OM","bahrain":"BH",
+  "india":"IN","pakistan":"PK","united states":"US","usa":"US","united kingdom":"GB","uk":"GB","canada":"CA","australia":"AU",
+  "egypt":"EG","turkey":"TR","germany":"DE","france":"FR","spain":"ES","italy":"IT","china":"CN","japan":"JP","south korea":"KR"
+};
+function countryNameToISO(name){
+  if(!name) return null;
+  const s = name.trim().toLowerCase();
+  if(s.length===2 && /^[a-z]{2}$/.test(s)) return s.toUpperCase();
+  if(COUNTRY_LOOKUP[s]) return COUNTRY_LOOKUP[s];
+  // try to extract if user put "Qatar 🇶🇦" -> check for emoji already present
+  const emoji = name.match(/[\u{1F1E6}-\u{1F1FF}]{2}/u);
+  if(emoji) return null; // already has flag
+  return null;
+}
+function isoToFlag(iso){
+  if(!iso || iso.length!==2) return '';
+  const A = 0x1F1E6;
+  const chars = [...iso.toUpperCase()].map(c => String.fromCodePoint(A + c.charCodeAt(0) - 65)).join('');
+  return chars;
+}
+function updateFlagFromCountryInput(){
+  const v = document.getElementById('input-country').value || '';
+  // if already contains regional indicator (flag emoji), show it
+  const emoji = v.match(/[\u{1F1E6}-\u{1F1FF}]{2}/u);
+  if(emoji){ document.getElementById('auto-flag').textContent = emoji[0]; return; }
+  const iso = countryNameToISO(v);
+  if(iso){ document.getElementById('auto-flag').textContent = isoToFlag(iso); return; }
+  // as fallback, if user typed a known country name containing spaces, try lookup by words
+  const tokens = v.toLowerCase().split(/\s+/).filter(Boolean);
+  for(const t of tokens){ if(COUNTRY_LOOKUP[t]){ document.getElementById('auto-flag').textContent = isoToFlag(COUNTRY_LOOKUP[t]); return; } }
+  document.getElementById('auto-flag').textContent = '';
+}
+
+/* -------------------------
+   Small initialization
+   ------------------------- */
+refreshUI();
+fillDateTimeInputs();
+updateFlagFromCountryInput();
+
+/* keep export button in scanner area working */
+document.getElementById('btn-export-csv').addEventListener('click',exportCSV);
+
+/* allow Enter+Ctrl in manualQr to add quickly */
+document.getElementById('manualQr').addEventListener('keydown',(e)=>{
+  if(e.ctrlKey && e.key==='Enter'){ document.getElementById('btn-add-manual').click(); }
+});
+
+/* ensure preview modal clicks outside close */
+document.getElementById('previewModal').addEventListener('click',(ev)=>{
+  if(ev.target===document.getElementById('previewModal')) document.getElementById('previewModal').style.display='none';
+});
+</script>
+</body>
+</html>
