@@ -45,7 +45,7 @@
 <body>
   <div class="wrap">
     <div class="card">
-      <h1>Rebar Scanning System</h1>
+      <h1>Dispatch Management System</h1>
 
       <!-- ===== START PAGE ===== -->
       <div id="page-start" class="page active">
@@ -364,9 +364,7 @@ async function startCamera(){
     if(barcodeDetector){
       detectInterval = setInterval(async ()=>{
         try{
-          ctx.drawImage(video,0,0,canvas.width,canvas.height);
-          const img=ctx.getImageData(0,0,canvas.width,canvas.height);
-          const barcodeResults = await barcodeDetector.detect(img);
+         const barcodeResults = await barcodeDetector.detect(video);
           if(barcodeResults?.length>0) for(const br of barcodeResults) handleDecodedText(String(br.rawValue||br.rawValueText||br.rawValue||br.format));
         }catch(e){console.log('detect error',e);}
       },80); // <-- unchanged fast loop
