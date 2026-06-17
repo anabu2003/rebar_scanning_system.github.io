@@ -3,107 +3,616 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Offline Bundle QR Scanner - Fast & Torch + Loading Flow</title>
+  <title>Offline Bundle QR Scanner - Enhanced Torch & Print</title>
   <style>
-    body{font-family:Arial,Helvetica,sans-serif;background:#f3f4f6;margin:0;padding:12px;display:flex;justify-content:center}
+    * { box-sizing: border-box; }
+    
+    body{
+      font-family:Arial,Helvetica,sans-serif;
+      background:#f3f4f6;
+      margin:0;
+      padding:12px;
+      display:flex;
+      justify-content:center;
+    }
+    
     .wrap{width:100%;max-width:960px}
     .card{background:#fff;padding:12px;border-radius:10px;box-shadow:0 6px 20px rgba(0,0,0,0.08)}
-    h1{font-size:18px;margin:4px 0 10px;text-align:center}
+    h1{font-size:24px;margin:4px 0 10px;text-align:center}
+    
     .controls{display:flex;gap:8px;flex-wrap:wrap}
-    button{flex:1;padding:10px;border-radius:8px;border:0;background:#2563eb;color:#fff;font-weight:600;cursor:pointer}
+    
+    button{
+      flex:1;
+      padding:12px;
+      border-radius:8px;
+      border:0;
+      background:#2563eb;
+      color:#fff;
+      font-weight:600;
+      cursor:pointer;
+      min-height:44px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-size:14px;
+      transition:background 0.2s, box-shadow 0.2s;
+    }
+    
+    button:hover{ background:#1d4ed8; box-shadow:0 2px 8px rgba(37,99,235,0.3); }
+    button:focus{ outline:2px solid #2563eb; outline-offset:2px; }
+    button:active{ transform:scale(0.98); }
+    
     button.ghost{background:#f59e0b}
+    button.ghost:hover{background:#d97706}
     button.danger{background:#ef4444}
-    button.small{flex:unset;padding:8px 10px;font-size:13px}
-    #btn-torch{display:none; background:#ffcc00;color:#000;font-weight:600;}
-    #reader{width:100%;margin-top:10px;border-radius:8px;overflow:hidden;display:flex;justify-content:center;align-items:center}
-    video{max-width:100%;border-radius:8px}
+    button.danger:hover{background:#dc2626}
+    button.success{background:#10b981}
+    button.success:hover{background:#059669}
+    
+    button.small{
+      flex:unset;
+      padding:10px 12px;
+      font-size:13px;
+      min-height:44px;
+    }
+    
+    /* Torch Button Styling */
+    #btn-torch{
+      display:none;
+      background:#fbbf24;
+      color:#000;
+      font-weight:600;
+      min-height:48px;
+      font-size:15px;
+    }
+    #btn-torch:hover{ background:#f59e0b; }
+    #btn-torch.torch-on{ 
+      background:#fcd34d; 
+      box-shadow:0 0 12px rgba(252,211,77,0.6), inset 0 0 0 2px #f59e0b;
+    }
+    
+    #btn-torch-unsupported{
+      display:none;
+      background:#9ca3af;
+      color:#fff;
+      cursor:not-allowed;
+      opacity:0.6;
+      font-size:12px;
+      min-height:48px;
+    }
+    
+    #reader{
+      width:100%;
+      height:250px;
+      border-radius:8px;
+      overflow:hidden;
+      display:flex;
+      justify-content:center;
+      align-items:center;
+      background:#000;
+      position:relative;
+    }
+    
+    video{
+      width:100%;
+      height:250px;
+      object-fit:cover;
+      border-radius:8px;
+      display:block;
+    }
+    
     canvas{display:none}
-    textarea{width:100%;padding:8px;border-radius:8px;border:1px solid #e5e7eb;margin-top:10px}
-    .resultBox,.summary{margin-top:12px;padding:8px;background:#fff;border-radius:8px;border:1px solid #e6eefc;max-height:260px;overflow:auto}
-    .logItem{padding:8px;border-radius:6px;background:#eef2ff;margin-bottom:8px;font-family:monospace}
-    .spec{font-weight:700;margin-top:8px;color:#111827}
-    .chargeRow{display:flex;justify-content:space-between;gap:8px;margin:6px 0;padding:6px 8px;background:#f8fafc;border-radius:6px}
-    .bundles{font-family:monospace;font-size:13px;color:#064e3b;margin-left:6px}
-    .muted{color:#6b7280;font-size:13px}
-    .footer{display:flex;justify-content:space-between;align-items:center;margin-top:10px}
-    /* pages */
+    
+    #no-camera{
+      color:#fff;
+      font-size:14px;
+      text-align:center;
+    }
+    
+    textarea{
+      width:100%;
+      padding:10px;
+      border-radius:8px;
+      border:2px solid #e5e7eb;
+      margin-top:6px;
+      font-family:monospace;
+      font-size:13px;
+      transition:border-color 0.2s;
+      resize:vertical;
+    }
+    
+    textarea:focus{
+      outline:none;
+      border-color:#2563eb;
+      box-shadow:0 0 0 3px rgba(37,99,235,0.1);
+    }
+    
+    .resultBox,.summary{
+      margin-top:12px;
+      padding:8px;
+      background:#fff;
+      border-radius:8px;
+      border:1px solid #e6eefc;
+      max-height:260px;
+      overflow:auto;
+    }
+    
+    .logItem{
+      padding:10px;
+      border-radius:6px;
+      background:#eef2ff;
+      margin-bottom:8px;
+      font-family:monospace;
+      font-size:13px;
+    }
+    
+    .spec{font-weight:700;margin-top:10px;color:#111827}
+    
+    .chargeRow{
+      display:flex;
+      justify-content:space-between;
+      gap:8px;
+      margin:6px 0;
+      padding:8px;
+      background:#f8fafc;
+      border-radius:6px;
+    }
+    
+    .bundles{
+      font-family:monospace;
+      font-size:13px;
+      color:#064e3b;
+      margin-left:6px;
+    }
+    
+    .muted{color:#4b5563;font-size:13px}
+    .small-muted{font-size:12px;color:#4b5563}
+    
+    .footer{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      margin-top:10px;
+      gap:8px;
+      flex-wrap:wrap;
+    }
+    
+    /* Pages */
     .page{display:none}
     .page.active{display:block}
+    
     .two-col{display:grid;grid-template-columns:1fr 420px;gap:12px}
-    .form-row{display:flex;gap:8px;margin-bottom:8px}
-    .form-row input,.form-row select, textarea{flex:1;padding:8px;border-radius:6px;border:1px solid #e5e7eb}
+    
+    .form-row{display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap}
+    
+    .form-row input,
+    .form-row select{
+      flex:1;
+      padding:10px;
+      border-radius:6px;
+      border:2px solid #e5e7eb;
+      font-size:14px;
+      transition:border-color 0.2s;
+      min-width:150px;
+    }
+    
+    .form-row input:focus,
+    .form-row select:focus{
+      outline:none;
+      border-color:#2563eb;
+      box-shadow:0 0 0 3px rgba(37,99,235,0.1);
+    }
+    
     .history-list{max-height:400px;overflow:auto}
-    .historyItem{padding:8px;border-radius:6px;border:1px solid #e6eefc;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center}
-    .preview-modal{position:fixed;left:0;top:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center}
-    .preview-card{background:#fff;padding:18px;border-radius:8px;max-width:760px;width:100%}
-    .print-layout{font-family:Arial,Helvetica,sans-serif;background:#fff;padding:12px;border-radius:6px}
-    .small-muted{font-size:12px;color:#6b7280}
+    .historyItem{
+      padding:10px;
+      border-radius:6px;
+      border:1px solid #e6eefc;
+      margin-bottom:8px;
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:8px;
+    }
+    
+    .preview-modal{
+      position:fixed;
+      left:0;
+      top:0;
+      right:0;
+      bottom:0;
+      background:rgba(0,0,0,0.5);
+      display:none;
+      align-items:center;
+      justify-content:center;
+      z-index:1000;
+    }
+    
+    .preview-modal.active{display:flex}
+    
+    .preview-card{
+      background:#fff;
+      padding:18px;
+      border-radius:8px;
+      max-width:800px;
+      width:95%;
+      max-height:90vh;
+      overflow-y:auto;
+    }
+    
+    /* Print Layout Styles */
+    .print-layout{
+      font-family:'Courier New',monospace;
+      background:#fff;
+      padding:16px;
+      border-radius:6px;
+      line-height:1.4;
+      color:#000;
+    }
+    
+    .print-header{
+      border-bottom:2px solid #000;
+      padding-bottom:12px;
+      margin-bottom:12px;
+      text-align:center;
+      font-weight:700;
+      font-size:14px;
+    }
+    
+    .print-section{
+      margin-bottom:12px;
+    }
+    
+    .print-section-title{
+      font-weight:700;
+      font-size:13px;
+      color:#000;
+      margin-bottom:8px;
+      border-bottom:1px dashed #000;
+      padding-bottom:4px;
+    }
+    
+    .cargo-item{
+      margin-bottom:10px;
+      padding-left:0;
+    }
+    
+    .cargo-header{
+      font-weight:700;
+      font-size:12px;
+      margin-bottom:4px;
+      color:#000;
+    }
+    
+    .cargo-detail{
+      display:flex;
+      justify-content:space-between;
+      font-size:12px;
+      padding-left:2em;
+      margin-bottom:2px;
+    }
+    
+    .cargo-detail-code{
+      flex:1;
+      text-align:left;
+    }
+    
+    .cargo-detail-count{
+      text-align:right;
+      min-width:120px;
+    }
+    
+    .bundle-refs{
+      padding-left:3em;
+      margin-top:2px;
+      margin-bottom:8px;
+    }
+    
+    .bundle-ref-line{
+      font-family:'Courier New',monospace;
+      font-size:11px;
+      color:#000;
+      margin:1px 0;
+    }
+    
+    .print-total{
+      border-top:2px solid #000;
+      border-bottom:2px solid #000;
+      padding:6px 0;
+      text-align:right;
+      font-weight:700;
+      font-size:12px;
+      margin-top:10px;
+    }
+    
+    .print-footer{
+      text-align:center;
+      color:#333;
+      font-size:10px;
+      margin-top:12px;
+      border-top:1px solid #ccc;
+      padding-top:8px;
+    }
+    
     .flag-box{font-size:20px;padding-left:6px}
+    
     .left-col{min-width:280px}
-.summary-panel{
-  width:420px;
-}
-.history-layout{
-  display:flex;
-  gap:12px;
-  margin-top:10px;
-}
-
-@media (max-width:768px){
-
-  .two-col{
-    grid-template-columns:1fr;
-  }
-
-  .left-col{
-    min-width:100%;
-  }
-
-  .chargeRow{
-    flex-direction:column;
-  }
-
-  .historyItem{
-    flex-direction:column;
-    align-items:flex-start;
-  }
-
-  .footer{
-    flex-direction:column;
-    gap:8px;
-  }
-
-}
+    .summary-panel{width:420px}
+    
+    .history-layout{
+      display:flex;
+      gap:12px;
+      margin-top:10px;
+    }
+    
+    .scanner-layout{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:8px;
+    }
+    
+    .controls-bar{
+      display:flex;
+      gap:6px;
+      flex-wrap:wrap;
+      margin-bottom:10px;
+      align-items:stretch;
+    }
+    
+    .loading-indicator{
+      display:none;
+      align-items:center;
+      justify-content:center;
+      gap:8px;
+      padding:12px;
+      background:#f0f9ff;
+      border-radius:8px;
+      border:2px solid #3b82f6;
+      color:#1e40af;
+      font-weight:600;
+      margin:8px 0;
+    }
+    
+    .loading-indicator.active{display:flex}
+    
+    .spinner{
+      display:inline-block;
+      width:16px;
+      height:16px;
+      border:2px solid #3b82f6;
+      border-top-color:transparent;
+      border-radius:50%;
+      animation:spin 0.8s linear infinite;
+    }
+    
+    @keyframes spin{
+      to{transform:rotate(360deg)}
+    }
+    
+    /* Torch Status Badge */
+    .torch-status{
+      display:none;
+      align-items:center;
+      gap:6px;
+      padding:8px 12px;
+      background:#fef08a;
+      border:1px solid #fcd34d;
+      border-radius:6px;
+      font-size:12px;
+      color:#713f12;
+      margin-bottom:8px;
+      font-weight:600;
+    }
+    
+    .torch-status.active{display:flex}
+    
+    .torch-indicator{
+      display:inline-block;
+      width:8px;
+      height:8px;
+      background:#f59e0b;
+      border-radius:50%;
+      animation:pulse 1.5s infinite;
+    }
+    
+    @keyframes pulse{
+      0%, 100%{opacity:1}
+      50%{opacity:0.5}
+    }
+    
+    /* Responsive Design */
+    @media (max-width:768px){
+      .two-col{
+        grid-template-columns:1fr;
+      }
+      
+      .scanner-layout{
+        grid-template-columns:1fr;
+      }
+      
+      #reader{
+        height:200px;
+      }
+      
+      video{
+        height:200px;
+      }
+      
+      .resultBox{
+        height:180px;
+      }
+      
+      .summary{
+        margin-top:10px;
+      }
+      
+      .summary-panel{
+        width:100%;
+      }
+      
+      .left-col{
+        min-width:100%;
+      }
+      
+      .chargeRow{
+        flex-direction:column;
+      }
+      
+      .historyItem{
+        flex-direction:column;
+        align-items:flex-start;
+      }
+      
+      .footer{
+        flex-direction:column;
+        width:100%;
+      }
+      
+      .footer button{
+        width:100%;
+      }
+      
+      h1{
+        font-size:20px;
+      }
+      
+      .controls-bar{
+        flex-direction:column;
+      }
+      
+      .controls-bar button{
+        width:100%;
+      }
+      
+      .print-layout{
+        padding:12px;
+        font-size:11px;
+      }
+      
+      .cargo-detail{
+        flex-direction:column;
+      }
+      
+      .cargo-detail-count{
+        min-width:auto;
+      }
+    }
+    
+    @media (max-width:480px){
+      body{
+        padding:8px;
+      }
+      
+      .card{
+        padding:10px;
+      }
+      
+      #reader{
+        height:140px;
+      }
+      
+      video{
+        height:140px;
+      }
+      
+      .resultBox{
+        height:120px;
+      }
+      
+      .summary{
+        height:120px;
+      }
+      
+      .form-row input,
+      .form-row select{
+        min-width:100%;
+      }
+      
+      .controls-bar button{
+        flex:1;
+        font-size:12px;
+        padding:8px;
+      }
+      
+      button.small{
+        font-size:12px;
+        padding:8px 10px;
+      }
+      
+      h1{
+        font-size:18px;
+        margin:2px 0 8px;
+      }
+      
+      .history-layout{
+        flex-direction:column;
+      }
+      
+      textarea{
+        font-size:12px;
+      }
+      
+      .print-layout{
+        padding:8px;
+        font-size:10px;
+      }
+      
+      .preview-card{
+        padding:12px;
+      }
+    }
+    
+    @media print{
+      body,
+      .card,
+      .controls,
+      .footer,
+      .controls-bar,
+      button,
+      .scanner-layout{
+        display:none !important;
+      }
+      
+      .preview-modal.active{
+        position:static;
+        background:none;
+      }
+      
+      .print-layout{
+        max-width:100%;
+        box-shadow:none;
+        padding:8px;
+      }
+    }
   </style>
-
-
 </head>
 <body>
   <div class="wrap">
     <div class="card">
-      <h1>SCANNER</h1>
+      <h1>📱 SCANNER</h1>
 
       <!-- ===== START PAGE ===== -->
       <div id="page-start" class="page active">
-        <div style="display:flex;gap:10px;align-items:center">
+        <div style="display:flex;gap:10px;align-items:flex-start">
           <div style="flex:1">
             <p class="muted">Choose mode:</p>
             <div class="controls" style="margin-bottom:10px">
-              <button id="opt-loading">Loading (with form)</button>
-              <button id="opt-scan-only" class="ghost">Scan Only</button>
+              <button id="opt-loading" aria-label="Start loading form with scanning">Loading (with form)</button>
+              <button id="opt-scan-only" class="ghost" aria-label="Start scanner without form">Scan Only</button>
             </div>
             <div class="muted small-muted">Other actions</div>
-            <div style="display:flex;gap:8px;margin-top:8px">
-              <button id="open-history" class="small">History</button>
-              <button id="btn-export" class="ghost small">Export CSV</button>
-              <button id="btn-reset" class="danger small">Reset Counts</button>
+            <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
+              <button id="open-history" class="small" aria-label="View scan history">History</button>
+              <button id="btn-export" class="ghost small" aria-label="Export scans to CSV">Export CSV</button>
+              <button id="btn-reset" class="danger small" aria-label="Clear all counts and reset">Reset Counts</button>
             </div>
           </div>
-          <div style="width:260px">
+          <div style="width:100%;max-width:260px;flex-shrink:0">
             <div style="background:#f8fafc;padding:10px;border-radius:8px">
               <div class="small-muted">Total bundles</div>
-              <div style="font-size:22px;font-weight:700;margin-top:6px" id="totalCount">0</div>
-              <div class="small-muted" style="margin-top:8px">Recent scans kept: 80</div>
+              <div style="font-size:28px;font-weight:700;margin-top:6px" id="totalCount">0</div>
+              <div class="small-muted" style="margin-top:8px">Recent scans: 80 max</div>
             </div>
           </div>
         </div>
@@ -112,137 +621,159 @@
       <!-- ===== LOADING FORM PAGE ===== -->
       <div id="page-loading" class="page">
         <div style="display:flex;justify-content:space-between;align-items:center">
-          <div style="font-weight:700">Cargo Loading Form</div>
+          <div style="font-weight:700">📋 Cargo Loading Form</div>
           <div style="display:flex;gap:8px">
-            <button id="back-to-start" class="ghost small">Back</button>
+            <button id="back-to-start" class="ghost small" aria-label="Go back to start page">Back</button>
           </div>
         </div>
 
         <div style="margin-top:10px" class="two-col">
           <div>
             <div class="form-row">
-              <input id="input-delivery" placeholder="Delivery No." />
-              <input id="input-date" placeholder="Date" readonly />
+              <input id="input-delivery" placeholder="Delivery No." aria-label="Delivery number" />
+              <input id="input-date" placeholder="Date" readonly aria-label="Date" />
             </div>
             <div class="form-row">
-              <input id="input-vehicle-no" placeholder="Vehicle Number" />
-              <input id="input-time" placeholder="Time" readonly />
+              <input id="input-vehicle-no" placeholder="Vehicle Number" aria-label="Vehicle number" />
+              <input id="input-time" placeholder="Time" readonly aria-label="Time" />
             </div>
             <div class="form-row">
-              <input id="input-country" placeholder="Vehicle Region (type country name or 2-letter code)" />
-              <div class="flag-box" id="auto-flag" title="Flag will appear when you type country / ISO code"></div>
+              <input id="input-country" placeholder="Vehicle Region (type country or ISO code)" aria-label="Vehicle region or country" />
+              <div class="flag-box" id="auto-flag" title="Flag will appear when you type country / ISO code" aria-label="Country flag"></div>
             </div>
             <div class="form-row">
-              <input id="input-driver" placeholder="Driver Name (Optional)" />
+              <input id="input-driver" placeholder="Driver Name (Optional)" aria-label="Driver name" />
+            </div>
+            <div class="form-row">
+              <input id="input-bundle-ref" placeholder="Bundle Reference (e.g., BR-123456)" aria-label="Bundle reference number" />
             </div>
 
-            <div style="margin-top:6px">
-              <button id="proceed-to-scan" class="ghost">Proceed to Scanner</button>
-              <button id="save-form" class="small" style="margin-left:8px">Save Form (Save to History - without scanning)</button>
+            <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
+              <button id="proceed-to-scan" class="ghost" aria-label="Proceed to camera scanner">Proceed to Scanner</button>
+              <button id="save-form" class="small" aria-label="Save form to history without scanning">Save Form</button>
             </div>
           </div>
 
           <div class="left-col">
-            <div style="background:#f8fafc;padding:8px;border-radius:8px">
-              <div class="small-muted">Form preview</div>
-              <div style="margin-top:8px;padding:8px;background:#fff;border-radius:6px" id="form-preview">
-                <!-- preview filled by JS -->
+            <div style="background:#f8fafc;padding:10px;border-radius:8px">
+              <div class="small-muted">📋 Form preview</div>
+              <div style="margin-top:10px;padding:10px;background:#fff;border-radius:6px;font-size:13px" id="form-preview">
+                <!-- filled by JS -->
               </div>
-              <div style="margin-top:8px" class="small-muted">Loaded cargo group will appear in scanner summary after scanning.</div>
+              <div style="margin-top:10px" class="small-muted">Loaded cargo will appear in scanner summary.</div>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- ===== SCANNER PAGE (original scanner preserved) ===== -->
-
+      <!-- ===== SCANNER PAGE ===== -->
       <div id="page-scanner" class="page">
-        <div style="display:flex;justify-content:space-between;align-items:center">
-          <div style="font-weight:700">Scanner</div>
-          <div style="display:flex;gap:8px">
-            <button id="open-preview" class="small">Preview & Print</button>
-            <button id="save-record" class="small ghost">Save Record</button>
-            <button id="back-to-start-2" class="small">Exit</button>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <div style="font-weight:700">📸 Scanner</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            <button id="back-to-start-2" class="small" aria-label="Exit scanner and return to start">Exit</button>
           </div>
         </div>
 
-      <div class="scanner-layout">
-          <div style="flex:1">
-            <div class="controls" style="margin-bottom:8px">
-              <button id="btn-start">Start Scanner</button>
-              <button id="btn-stop" style="display:none" class="ghost">Stop</button>
-             <button id="btn-reset-2" class="danger">Reset Counts</button>
-              <button id="btn-torch">Torch ON</button>
-            </div>
+        <!-- Torch Status Badge -->
+        <div class="torch-status" id="torch-status" role="status" aria-label="Torch status indicator">
+          <span class="torch-indicator"></span>
+          <span>Torch is ON</span>
+        </div>
 
-            <div id="reader">
-              <video id="video" playsinline autoplay muted style="display:none"></video>
+        <!-- Camera Controls -->
+        <div class="controls-bar">
+          <button id="btn-start" class="small ghost" aria-label="Start camera">▶️ Start Camera</button>
+          <button id="btn-stop" class="small danger" style="display:none" aria-label="Stop camera">⏹️ Stop Camera</button>
+          <button id="btn-torch" class="small" aria-label="Toggle torch flashlight">🔦 Torch OFF</button>
+          <button id="btn-torch-unsupported" class="small" title="Torch not supported on this device" disabled>🔦 Torch N/A</button>
+          <button id="btn-export-csv" class="ghost small" aria-label="Export scans to CSV file">📥 Export CSV</button>
+        </div>
+
+        <!-- Loading Indicator -->
+        <div class="loading-indicator" id="loading-indicator" role="status" aria-live="polite">
+          <span class="spinner"></span>
+          <span>Processing scan...</span>
+        </div>
+
+        <!-- Manual QR Entry -->
+        <div style="margin-bottom:10px;padding:10px;background:#f8fafc;border-radius:6px;border:1px solid #e5e7eb">
+          <label for="manualQr" style="display:block;margin-bottom:6px;font-weight:600;font-size:13px">📄 Manual QR Entry (optional)</label>
+          <textarea id="manualQr" placeholder="Paste QR content here..." style="height:60px" aria-label="Manual QR code entry"></textarea>
+          <button id="btn-add-manual" class="small" style="margin-top:6px" aria-label="Add manually entered QR code">Add Manual</button>
+        </div>
+
+        <!-- Scanner Layout -->
+        <div class="scanner-layout">
+          <!-- LEFT SIDE: Camera -->
+          <div>
+            <div id="reader" role="img" aria-label="Camera preview area">
+              <video id="video" playsinline autoplay muted aria-label="Camera video feed"></video>
               <canvas id="canvas"></canvas>
-              <div id="no-camera" style="padding:12px;color:#6b7280">Camera not started</div>
+              <div id="no-camera" style="color:#fff;text-align:center">📷 Camera not started</div>
             </div>
-
-            <textarea id="manualQr" placeholder="Or paste multi-line QR content here (example):&#10;4006463&#10;FP-D16-500-DCL&#10;[CUKC{...}]&#10;[CUKB{...}]&#10;[CUKR0008226/020]"></textarea>
-            <div style="display:flex;gap:8px;margin-top:8px">
-              <button id="btn-add-manual">Parse & Add</button>
-              <button id="btn-export-csv" class="ghost">Export CSV</button>
-            </div>
-
           </div>
 
-          <div class="summary-panel">
-            <div class="resultBox" id="scansBox">
-              <strong class="muted">Recent scans (newest first)</strong>
+          <!-- RIGHT SIDE: Recent Scans -->
+          <div>
+            <div class="resultBox" id="scansBox" role="log" aria-label="Recent scans list" aria-live="polite">
+              <strong class="muted">📍 Recent scans</strong>
               <div id="scansList"></div>
             </div>
-
-            <div class="summary" id="summaryBox">
-              <strong class="muted">Grouped summary</strong>
-              <div id="grouped"></div>
-            </div>
           </div>
+        </div>
+
+        <!-- SUMMARY BELOW -->
+        <div class="summary" id="summaryBox" role="region" aria-label="Grouped summary by specification">
+          <strong class="muted">📊 Grouped summary</strong>
+          <div id="grouped"></div>
         </div>
 
         <div class="footer" style="margin-top:10px">
-          <div class="muted">Total bundles: <span id="totalCount2">0</span></div>
+          <button id="open-preview" class="small" aria-label="Open preview for printing">🖨️ Preview & Print</button>
+          <button id="save-record" class="small ghost" aria-label="Save this scan record to history">💾 Save Record</button>
+          <div class="muted" aria-label="Total bundles scanned">Total bundles: <span id="totalCount2">0</span></div>
         </div>
       </div>
 
       <!-- ===== HISTORY PAGE ===== -->
       <div id="page-history" class="page">
-        <div style="display:flex;justify-content:space-between;align-items:center">
-          <div style="font-weight:700">History / Reports</div>
-          <div style="display:flex;gap:8px">
-            <button id="back-from-history" class="small">Back</button>
-            <button id="del-all-history" class="danger small">Delete All</button>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <div style="font-weight:700">📚 History / Reports</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button id="back-from-history" class="small" aria-label="Go back to start page">Back</button>
+            <button id="del-all-history" class="danger small" aria-label="Delete all history records">Delete All</button>
           </div>
         </div>
 
         <div class="history-layout">
           <div style="flex:1">
-            <div class="history-list" id="historyList"></div>
+            <div class="history-list" id="historyList" role="list"></div>
           </div>
-          <div style="width:360px">
-            <div style="background:#f8fafc;padding:8px;border-radius:8px">
+          <div style="width:100%;max-width:360px;flex-shrink:0">
+            <div style="background:#f8fafc;padding:10px;border-radius:8px">
               <div class="small-muted">Selected record</div>
-              <div id="historySelected" style="margin-top:8px;background:#fff;padding:8px;border-radius:6px;min-height:160px"></div>
-              <div style="display:flex;gap:8px;margin-top:8px">
-                <button id="history-delete" class="danger small">Delete Selected</button>
-                <button id="history-reopen" class="ghost small">Reopen in Scanner</button>
+              <div id="historySelected" style="margin-top:10px;background:#fff;padding:10px;border-radius:6px;min-height:160px;font-size:13px">
+                Select a record to view details
+              </div>
+              <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
+                <button id="history-delete" class="danger small" aria-label="Delete selected history record">Delete Selected</button>
+                <button id="history-reopen" class="ghost small" aria-label="Reopen selected record in scanner">Reopen in Scanner</button>
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- ===== PREVIEW MODAL (hidden) ===== -->
-      <div id="previewModal" style="display:none" class="preview-modal">
+      <!-- ===== PREVIEW MODAL ===== -->
+      <div id="previewModal" class="preview-modal" role="dialog" aria-label="Print preview modal" aria-modal="true">
         <div class="preview-card">
-          <div style="display:flex;justify-content:space-between;align-items:center">
-            <div style="font-weight:700">Print Preview</div>
-            <div>
-              <button id="closePreview" class="small">Close</button>
-              <button id="doPrint" class="ghost small">Print</button>
-              <button id="doSend" class="small">Send</button>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+            <div style="font-weight:700">🖨️ Cargo Summary Report</div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <button id="closePreview" class="small" aria-label="Close preview modal">Close</button>
+              <button id="doPrint" class="ghost small" aria-label="Open print dialog">🖨️ Print</button>
+              <button id="doSend" class="small" aria-label="Send record (simulated)">Send</button>
             </div>
           </div>
           <div style="margin-top:12px" id="previewContent">
@@ -257,13 +788,12 @@
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
 
 <script>
-/* -------------------------
-   Core scanner code (kept essentially same & unchanged detection speed)
-   ------------------------- */
+/* ================================
+   CORE SCANNER CODE
+   ================================ */
 
 let countsBySpec={}, totalBundles=0, recentScans=[],
-scannerActive=false, stream=null,
-chargeOrderBySpec = {},
+scannerActive=false, stream=null, chargeOrderBySpec = {},
 video=document.getElementById('video'),
 canvas=document.getElementById('canvas'),
 ctx=canvas.getContext('2d'),
@@ -271,365 +801,534 @@ barcodeDetector=null,
 detectInterval=null,
 torchOn=false,
 track=null,
-useJsQr=false;
+useJsQr=false,
+isProcessing=false,
+audioContext=null,
+torchSupported=false;
 
-/* beep/vibrate helpers */
-function playBeep(){try{const ctxA=new (window.AudioContext||window.webkitAudioContext)(); const o=ctxA.createOscillator(); o.type='sine'; o.frequency.value=700; o.connect(ctxA.destination); o.start(); setTimeout(()=>o.stop(),120);}catch(e){}}
-function doVibrate(){if(navigator.vibrate) navigator.vibrate(140);}
-function showToast(msg){console.log('TOAST:',msg);}
+/* ================================
+   TORCH MANAGEMENT
+   ================================ */
 
-/* parse QR text - unchanged logic */
+function updateTorchUI(){
+  const torchBtn = document.getElementById('btn-torch');
+  const torchBtnUnsupported = document.getElementById('btn-torch-unsupported');
+  const torchStatus = document.getElementById('torch-status');
+  
+  if(torchSupported){
+    torchBtn.style.display = 'inline-flex';
+    torchBtnUnsupported.style.display = 'none';
+    
+    if(torchOn){
+      torchBtn.classList.add('torch-on');
+      torchBtn.textContent = '🔦 Torch ON';
+      torchStatus.classList.add('active');
+    } else {
+      torchBtn.classList.remove('torch-on');
+      torchBtn.textContent = '🔦 Torch OFF';
+      torchStatus.classList.remove('active');
+    }
+  } else {
+    torchBtn.style.display = 'none';
+    torchBtnUnsupported.style.display = 'inline-flex';
+    torchStatus.classList.remove('active');
+  }
+}
+
+document.getElementById('btn-torch').addEventListener('click', async ()=>{
+  if(!track){
+    alert('Camera not ready. Please start the camera first.');
+    return;
+  }
+  
+  if(!torchSupported){
+    alert('Torch is not supported on this device.');
+    return;
+  }
+  
+  torchOn = !torchOn;
+  
+  try{
+    await track.applyConstraints({advanced:[{torch:torchOn}]});
+    updateTorchUI();
+    console.log('✓ Torch toggled:', torchOn ? 'ON' : 'OFF');
+  }catch(e){
+    console.error('✗ Torch toggle failed:', e);
+    torchOn = !torchOn;
+    alert('Failed to toggle torch: ' + (e.message || 'Unknown error'));
+  }
+});
+
+document.getElementById('btn-torch-unsupported').addEventListener('click', ()=>{
+  alert('Torch/Flashlight is not supported on this device. Please ensure:\n• You are using a mobile device with a camera\n• Your browser supports the Torch API\n• Camera permissions are granted');
+});
+
+/* ================================
+   AUDIO CONTEXT MANAGEMENT
+   ================================ */
+
+function getAudioContext(){
+  try{
+    if(!audioContext){
+      audioContext = new (window.AudioContext||window.webkitAudioContext)();
+    }
+    return audioContext;
+  }catch(e){
+    console.log('⚠ Audio context unavailable:', e.message);
+    return null;
+  }
+}
+
+function playBeep(freq=700, duration=120){
+  try{
+    const ctx = getAudioContext();
+    if(!ctx) return;
+    const o = ctx.createOscillator();
+    o.type='sine';
+    o.frequency.value=freq;
+    o.connect(ctx.destination);
+    o.start();
+    setTimeout(()=>o.stop(),duration);
+  }catch(e){
+    console.log('⚠ Beep error:', e);
+  }
+}
+
+function doVibrate(){
+  try{
+    if(navigator.vibrate) navigator.vibrate(140);
+  }catch(e){
+    console.log('⚠ Vibration not available');
+  }
+}
+
+function showLoading(show){
+  const loader = document.getElementById('loading-indicator');
+  if(loader) loader.classList.toggle('active', show);
+}
+
+/* ================================
+   QR PARSING LOGIC
+   ================================ */
+
 function parseQrText(raw){
   const text=String(raw).replace(/\r/g,'').trim();
   if(!text) return {ok:false,reason:'empty'};
+  
   const lines = text
-  .split(/\n|;/)
-  .map(s => s.replace(/[^\x20-\x7E]/g, '').trim())
-  .filter(s => s.length > 0);
+    .split(/\n|;/)
+    .map(s => s.replace(/[^\x20-\x7E]/g, '').trim())
+    .filter(s => s.length > 0);
+  
   let charge=null,spec=null,bundleRef=null,bundleNo='';
-  for(const t of lines){ if(/^\s*(4\d{6}|5\d{6})\s*$/.test(t)){charge=t;break;} }
+  
+  // Extract charge number (4-5 digit code starting with 4 or 5)
+  for(const t of lines){
+    if(/^\s*(4\d{6}|5\d{6})\s*$/.test(t)){
+      charge=t;
+      break;
+    }
+  }
+  
+  // Extract bundle reference from [CUKR...] format
   for(const t of lines.slice().reverse()){
     const m=t.match(/\[CUKR[^\]]*\]/i);
-    if(m){bundleRef=m[0]; const m2=bundleRef.match(/\/(\d{1,})\]?$/); if(m2) bundleNo=m2[1]; break;}
+    if(m){
+      bundleRef=m[0];
+      const m2=bundleRef.match(/\/(\d{1,})\]?$/);
+      if(m2) bundleNo=m2[1];
+      break;
+    }
   }
+  
+  // Extract spec (cargo description)
   for(const t of lines){
     if(t===charge) continue;
     if(/^\[.*\]$/.test(t)) continue;
-    if(/[A-Za-z0-9\-]/.test(t) && t.length>2){spec=t;break;}
+    if(/[A-Za-z0-9\-]/.test(t) && t.length>2){
+      spec=t;
+      break;
+    }
   }
+  
   if(!spec && lines.length>=2) spec=lines[1];
   if(!charge || !bundleRef || !spec) return {ok:false,reason:'missing',charge,spec,bundleRef};
+  
   return {ok:true,charge,spec:spec||'UNKNOWN',bundleRef,bundleNo};
 }
 
-/* add parsed -> counts & recent scans (unchanged behavior for duplicates etc) */
 function addParsed(parsed, raw){
   const {charge,spec,bundleRef,bundleNo}=parsed;
+  
   countsBySpec[spec] = countsBySpec[spec] || {};
-chargeOrderBySpec[spec] = chargeOrderBySpec[spec] || [];
+  chargeOrderBySpec[spec] = chargeOrderBySpec[spec] || [];
 
-if(!countsBySpec[spec][charge]){
-  countsBySpec[spec][charge] = new Set();
-  chargeOrderBySpec[spec].push(charge); // store scan order
-}
+  if(!countsBySpec[spec][charge]){
+    countsBySpec[spec][charge] = new Set();
+    chargeOrderBySpec[spec].push(charge);
+  }
+  
   const set=countsBySpec[spec][charge];
   const already=set.has(bundleRef);
+  
   if(!already){
-    set.add(bundleRef); totalBundles++; recentScans.unshift({time:new Date(),charge,spec,bundleRef,bundleNo,status:'added',raw});
-    playBeep(); doVibrate(); showToast('Added '+bundleRef);
+    set.add(bundleRef);
+    totalBundles++;
+    recentScans.unshift({time:new Date(),charge,spec,bundleRef,bundleNo,status:'added',raw});
+    playBeep(700, 120);
+    doVibrate();
   } else {
     recentScans.unshift({time:new Date(),charge,spec,bundleRef,bundleNo,status:'duplicate',raw});
-    try{const ctxA=new (window.AudioContext||window.webkitAudioContext)(); const o=ctxA.createOscillator(); o.frequency.value=300; o.connect(ctxA.destination); o.start(); setTimeout(()=>o.stop(),100);}catch(e){} doVibrate(); showToast('Duplicate '+bundleRef);
+    playBeep(300, 100);
+    doVibrate();
   }
+  
   if(recentScans.length>80) recentScans.pop();
   refreshUI();
 }
 
-/* refresh UI (keeps same style) */
+/* ================================
+   UI REFRESH & DISPLAY
+   ================================ */
+
 function refreshUI(){
-  const grouped=document.getElementById('grouped'); grouped.innerHTML='';
+  const grouped=document.getElementById('grouped');
+  grouped.innerHTML='';
+  
   for(const spec of Object.keys(countsBySpec)){
-    const specDiv=document.createElement('div'); specDiv.className='spec'; specDiv.textContent=spec; grouped.appendChild(specDiv);
+    const specDiv=document.createElement('div');
+    specDiv.className='spec';
+    specDiv.textContent=spec;
+    grouped.appendChild(specDiv);
+    
     const charges=countsBySpec[spec];
-    for(const charge of chargeOrderBySpec[spec] || []){
+    for(const charge of (chargeOrderBySpec[spec] || [])){
       const set=charges[charge];
-      const chargeRow=document.createElement('div'); chargeRow.className='chargeRow';
-      const left=document.createElement('div'); left.innerHTML=`<div style="font-weight:700">${charge}</div><div class="muted">${set.size} bundle(s)</div>`;
-      const right=document.createElement('div'); right.style.minWidth='120px'; right.innerHTML=Array.from(set).map(b=>`<div class="bundles">${b}</div>`).join('');
-      chargeRow.appendChild(left); chargeRow.appendChild(right); grouped.appendChild(chargeRow);
+      const chargeRow=document.createElement('div');
+      chargeRow.className='chargeRow';
+      
+      const left=document.createElement('div');
+      left.innerHTML=`<div style="font-weight:700">${charge}</div><div class="muted">${set.size} bundle(s)</div>`;
+      
+      const right=document.createElement('div');
+      right.style.minWidth='120px';
+      right.innerHTML=Array.from(set).map(b=>`<div class="bundles">${b}</div>`).join('');
+      
+      chargeRow.appendChild(left);
+      chargeRow.appendChild(right);
+      grouped.appendChild(chargeRow);
     }
   }
 
-  const scansList=document.getElementById('scansList'); scansList.innerHTML='';
+  const scansList=document.getElementById('scansList');
+  scansList.innerHTML='';
+  
   for(const s of recentScans.slice(0,30)){
-    const el=document.createElement('div'); el.className='logItem';
-    el.innerHTML=`<div style="font-size:12px;color:#374151">${new Date(s.time).toLocaleTimeString()}</div><div>${s.charge} — ${s.spec}</div><div style="font-size:13px;margin-top:6px">${s.bundleRef} ${s.bundleNo?('(no:'+s.bundleNo+')'):''}</div><div style="margin-top:6px;font-size:12px;color:${s.status==='added'?'#065f46':'#92400e'}">${s.status==='added'
-  ? 'Added'
-  : s.status==='duplicate'
-    ? 'Duplicate (ignored)'
-    : 'Invalid QR (not added)'
-}</div>`;
+    const el=document.createElement('div');
+    el.className='logItem';
+    const statusColor = s.status==='added' ? '#065f46' : s.status==='duplicate' ? '#92400e' : '#b91c1c';
+    const statusText = s.status==='added' ? 'Added' : s.status==='duplicate' ? 'Duplicate' : 'Invalid';
+    
+    el.innerHTML=`<div style="font-size:11px;color:#6b7280">${new Date(s.time).toLocaleTimeString()}</div><div>${s.charge} — ${s.spec}</div><div style="font-size:12px;margin-top:4px">${s.bundleRef} ${s.bundleNo?('(no:'+s.bundleNo+')'):''}</div><div style="margin-top:4px;font-size:11px;color:${statusColor}">${statusText}</div>`;
     scansList.appendChild(el);
   }
+  
   document.getElementById('totalCount').textContent=totalBundles;
   document.getElementById('totalCount2').textContent=totalBundles;
 }
 
-/* reset */
 function resetAll(){
   if(!confirm('Clear all counts and scans?')) return;
   countsBySpec={};
-chargeOrderBySpec={};
-totalBundles=0;
-recentScans=[]; refreshUI();
+  chargeOrderBySpec={};
+  totalBundles=0;
+  recentScans=[];
+  refreshUI();
 }
 
-/* export CSV for counts */
 function exportCSV(){
   let csv='Specification,ChargeNumber,BundleReference,BundleNo\n';
   for(const spec of Object.keys(countsBySpec)){
     const charges=countsBySpec[spec];
     for(const charge of Object.keys(charges)){
       for(const bundleRef of charges[charge]){
-        const m=bundleRef.match(/\/(\d+)\]?$/); const bno=m?m[1]:'';
+        const m=bundleRef.match(/\/(\d+)\]?$/);
+        const bno=m?m[1]:'';
         csv+=`"${spec}","${charge}","${bundleRef}","${bno}"\n`;
       }
     }
   }
-  const blob=new Blob([csv],{type:'text/csv'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='bundle_counts.csv'; a.click(); URL.revokeObjectURL(url);
+  const blob=new Blob([csv],{type:'text/csv'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;
+  a.download='bundle_counts.csv';
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
-/* manual parse button */
-document.getElementById('btn-add-manual').addEventListener('click',()=>{ const raw=document.getElementById('manualQr').value; if(!raw||!raw.trim()){ alert('Paste QR content first'); return; } const parsed=parseQrText(raw); if(!parsed.ok){alert('Could not parse QR content. Ensure charge and [CUKR...] present.'); return;} addParsed(parsed,raw); document.getElementById('manualQr').value='';});
-
-/* small CSV export button (scanner area) */
-document.getElementById('btn-export-csv').addEventListener('click',exportCSV);
-
-/* reset button used in multiple places */
-document.getElementById('btn-reset').addEventListener('click',resetAll);
-document.getElementById('btn-reset-2').addEventListener('click', resetAll);
-
-/* torch toggle */
-document.getElementById('btn-torch').addEventListener('click',async ()=>{
-  if(!track) return alert('Camera not ready');
-  torchOn=!torchOn;
-  try{ await track.applyConstraints({advanced:[{torch:torchOn}]}); document.getElementById('btn-torch').innerText = torchOn?'Torch OFF':'Torch ON'; }catch(e){alert('Torch not supported');}
+document.getElementById('btn-add-manual').addEventListener('click',()=>{
+  const raw=document.getElementById('manualQr').value;
+  if(!raw||!raw.trim()){
+    alert('Paste QR content first');
+    return;
+  }
+  const parsed=parseQrText(raw);
+  if(!parsed.ok){
+    alert('Could not parse QR content. Ensure charge and [CUKR...] present.');
+    return;
+  }
+  addParsed(parsed,raw);
+  document.getElementById('manualQr').value='';
 });
 
-/* START / STOP camera - keep behavior and detection interval unchanged (80ms) */
+document.getElementById('btn-export-csv').addEventListener('click',exportCSV);
+document.getElementById('btn-reset').addEventListener('click',resetAll);
+
+/* ================================
+   CAMERA CONTROL
+   ================================ */
+
 async function startCamera(){
   if(scannerActive) return;
   try{
-   stream = await navigator.mediaDevices.getUserMedia({
-  video:{
-    facingMode:'environment',
-    width:{ideal:1920},
-    height:{ideal:1080}
-  }
-});
-    video.srcObject=stream; video.style.display='block'; document.getElementById('no-camera').style.display='none';
-    await video.play();
-    canvas.width=video.videoWidth || 640; canvas.height=video.videoHeight || 480;
+    showLoading(true);
+    
+    stream = await navigator.mediaDevices.getUserMedia({
+      video:{
+        facingMode:'environment',
+        width:{ideal:1920},
+        height:{ideal:1080}
+      }
+    });
+    
+    video.srcObject=stream;
+    video.style.display='block';
+    document.getElementById('no-camera').style.display='none';
+    
     track = stream.getVideoTracks()[0];
-    const caps = track.getCapabilities(); if(caps.torch) document.getElementById('btn-torch').style.display='inline-block';
-    if(window.BarcodeDetector &&
-   BarcodeDetector.getSupportedFormats)
-{
-    const supported =
-      await BarcodeDetector.getSupportedFormats()
-      .catch(()=>[]);
-
-    if(supported.includes('qr_code'))
-    {
-        barcodeDetector =
-          new BarcodeDetector({
-              formats:['qr_code']
-          });
-
-        useJsQr = false;
+    const caps = track.getCapabilities();
+    
+    // Detect torch support
+    torchSupported = !!(caps && caps.torch);
+    updateTorchUI();
+    console.log('✓ Camera started. Torch support:', torchSupported);
+    
+    // Detect barcode decoder
+    let supported = [];
+    if(window.BarcodeDetector){
+      try{
+        const formats = await BarcodeDetector.getSupportedFormats();
+        supported = formats || [];
+      }catch(e){
+        console.log('⚠ BarcodeDetector unavailable');
+      }
     }
-    else
-    {
-        useJsQr = true;
+    
+    if(window.BarcodeDetector && supported.includes('qr_code')){
+      barcodeDetector = new BarcodeDetector({formats:['qr_code']});
+      useJsQr = false;
+      console.log('✓ Using BarcodeDetector API');
+    } else {
+      useJsQr = true;
+      canvas.width = 800;
+      canvas.height = 600;
+      console.log('✓ Using jsQR library');
     }
-}
-else
-{
-    useJsQr = true;
-}
-   detectInterval = setInterval(async ()=>{
-
-    try{
-
+    
+    // Start detection loop
+    detectInterval = setInterval(async ()=>{
+      try{
         if(barcodeDetector){
-
-            const barcodeResults =
-                await barcodeDetector.detect(video);
-
-            if(barcodeResults?.length){
-
-                for(const br of barcodeResults){
-
-                    handleDecodedText(
-                      String(br.rawValue)
-                    );
-
-                }
+          const barcodeResults = await barcodeDetector.detect(video);
+          if(barcodeResults?.length){
+            for(const br of barcodeResults){
+              handleDecodedText(String(br.rawValue));
             }
-
+          }
+        } else if(useJsQr){
+          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+          const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          const code = jsQR(imageData.data, imageData.width, imageData.height, {inversionAttempts: "attemptBoth"});
+          if(code){
+            handleDecodedText(code.data);
+          }
         }
-        else if(useJsQr){
-
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-
-            ctx.drawImage(
-                video,
-                0,
-                0,
-                canvas.width,
-                canvas.height
-            );
-
-            const imageData =
-                ctx.getImageData(
-                    0,
-                    0,
-                    canvas.width,
-                    canvas.height
-                );
-
-            const code = jsQR(
-                imageData.data,
-                imageData.width,
-                imageData.height
-            );
-
-            if(code){
-
-                handleDecodedText(
-                    code.data
-                );
-
-            }
-
-        }
-
-    }
-    catch(e){
-        console.log(e);
-    }
-
-},80);
-console.log(
-  barcodeDetector
-    ? "BarcodeDetector mode"
-    : "jsQR fallback mode"
-);
+      }catch(e){
+        console.log('⚠ Detection error:', e);
+      }
+    }, 80);
+    
     scannerActive=true;
     document.getElementById('btn-start').style.display='none';
-    document.getElementById('btn-stop').style.display='inline-block';
-  }catch(e){alert('Camera start error:'+e); stopCamera();}
-}
-function stopCamera(){
-  if(!scannerActive) return;
-  if(detectInterval) clearInterval(detectInterval); detectInterval=null;
-  if(stream) stream.getTracks().forEach(t=>t.stop()); stream=null; track=null;
-  video.pause(); video.srcObject=null; video.style.display='none'; document.getElementById('no-camera').style.display='block';
-document.getElementById('btn-torch').style.display='none';
-  scannerActive=false;
-  document.getElementById('btn-start').style.display='inline-block'; document.getElementById('btn-stop').style.display='none';
-}
-async function handleDecodedText(decodedText){
-  if(!decodedText) return;
-
-  const recent = recentScans[0];
-  if(recent && recent.raw === decodedText && (new Date() - new Date(recent.time)) < 700) return;
-
-  const parsed = parseQrText(decodedText);
-
-  if(parsed.ok && parsed.charge && parsed.spec && parsed.bundleRef){
-    addParsed(parsed, decodedText);
-  } else {
-    recentScans.unshift({
-      time: new Date(),
-      charge: parsed.charge || '?',
-      spec: parsed.spec || '?',
-      bundleRef: parsed.bundleRef || '?',
-      bundleNo: parsed.bundleNo || '',
-      status: 'invalid',
-      raw: decodedText
-    });
-
-    refreshUI();
-
-    // error beep
-    try {
-      const ctxA = new (window.AudioContext || window.webkitAudioContext)();
-      const o = ctxA.createOscillator();
-      o.frequency.value = 250;
-      o.connect(ctxA.destination);
-      o.start();
-      setTimeout(() => o.stop(), 120);
-    } catch(e) {}
-
-    doVibrate();
+    document.getElementById('btn-stop').style.display='inline-flex';
+    showLoading(false);
+  }catch(e){
+    showLoading(false);
+    const msg = e.name === 'NotAllowedError' ? 'Camera access denied. Please allow in browser settings.' :
+                e.name === 'NotFoundError' ? 'No camera found on this device.' :
+                'Camera error: ' + e.message;
+    alert(msg);
+    stopCamera();
   }
 }
+
+function stopCamera(){
+  if(!scannerActive) return;
+  
+  if(detectInterval){
+    clearInterval(detectInterval);
+    detectInterval=null;
+  }
+  
+  if(stream){
+    stream.getTracks().forEach(t=>t.stop());
+    stream=null;
+    track=null;
+  }
+  
+  video.pause();
+  video.srcObject=null;
+  video.style.display='none';
+  document.getElementById('no-camera').style.display='block';
+  
+  torchOn = false;
+  torchSupported = false;
+  updateTorchUI();
+  
+  scannerActive=false;
+  document.getElementById('btn-start').style.display='inline-flex';
+  document.getElementById('btn-stop').style.display='none';
+}
+
+async function handleDecodedText(decodedText){
+  if(!decodedText || isProcessing) return;
+  
+  isProcessing = true;
+  
+  try{
+    const recent = recentScans[0];
+    if(recent && recent.raw === decodedText && (new Date() - new Date(recent.time)) < 700){
+      isProcessing = false;
+      return;
+    }
+    
+    const parsed = parseQrText(decodedText);
+    
+    if(parsed.ok && parsed.charge && parsed.spec && parsed.bundleRef){
+      addParsed(parsed, decodedText);
+    } else {
+      recentScans.unshift({
+        time: new Date(),
+        charge: parsed.charge || '?',
+        spec: parsed.spec || '?',
+        bundleRef: parsed.bundleRef || '?',
+        bundleNo: parsed.bundleNo || '',
+        status: 'invalid',
+        raw: decodedText
+      });
+      
+      playBeep(250, 120);
+      doVibrate();
+      refreshUI();
+    }
+  }finally{
+    isProcessing = false;
+  }
+}
+
 document.getElementById('btn-start').addEventListener('click',startCamera);
 document.getElementById('btn-stop').addEventListener('click',stopCamera);
 
-/* -------------------------
-   UI + Page flow + Form + History + Preview/Print
-   ------------------------- */
+/* ================================
+   PAGE NAVIGATION
+   ================================ */
 
-/* simple page router (single file multipage) */
 function showPage(id){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
-  const el=document.getElementById(id); if(el) el.classList.add('active');
+  const el=document.getElementById(id);
+  if(el) el.classList.add('active');
 }
 
-/* start page actions */
 document.getElementById('opt-loading').addEventListener('click',()=>{
   fillDateTimeInputs();
   showPage('page-loading');
 });
+
 document.getElementById('opt-scan-only').addEventListener('click',()=>{
   showPage('page-scanner');
 });
-document.getElementById('open-history').addEventListener('click',()=>{ renderHistory(); showPage('page-history'); });
+
+document.getElementById('open-history').addEventListener('click',()=>{
+  renderHistory();
+  showPage('page-history');
+});
 
 document.getElementById('back-to-start').addEventListener('click',()=>showPage('page-start'));
 document.getElementById('back-to-start-2').addEventListener('click',()=>{
-  // if camera on, stop it to free device
   stopCamera();
   showPage('page-start');
 });
 document.getElementById('back-from-history').addEventListener('click',()=>showPage('page-start'));
 
-/* form preview & auto date/time */
+/* ================================
+   FORM LOGIC
+   ================================ */
+
 function fillDateTimeInputs(){
   const now=new Date();
   document.getElementById('input-date').value = now.toLocaleDateString();
   document.getElementById('input-time').value = now.toLocaleTimeString();
   updateFormPreview();
 }
-document.getElementById('input-delivery').addEventListener('input',updateFormPreview);
-document.getElementById('input-vehicle-no').addEventListener('input',updateFormPreview);
-document.getElementById('input-country').addEventListener('input',()=>{ updateFlagFromCountryInput(); updateFormPreview(); });
-document.getElementById('input-driver').addEventListener('input',updateFormPreview);
+
 function updateFormPreview(){
   const dv=document.getElementById('input-delivery').value||'___';
   const vn=document.getElementById('input-vehicle-no').value||'___';
   const reg=document.getElementById('input-country').value||'___';
   const dr=document.getElementById('input-driver').value||'___';
+  const br=document.getElementById('input-bundle-ref').value||'___';
   const date=document.getElementById('input-date').value;
   const time=document.getElementById('input-time').value;
+  
   document.getElementById('form-preview').innerHTML = `
     <div style="font-weight:700">Cargo Loading</div>
     <div class="small-muted">Date: ${date} &nbsp;&nbsp; Time: ${time}</div>
-    <hr style="margin:8px 0" />
+    <hr style="margin:8px 0;border:none;border-top:1px solid #e5e7eb" />
     <div><strong>Delivery No:</strong> ${dv}</div>
     <div style="margin-top:6px"><strong>Vehicle No:</strong> ${vn}</div>
     <div style="margin-top:6px"><strong>Region:</strong> ${reg} <span id="previewFlag" class="flag-box"></span></div>
     <div style="margin-top:6px"><strong>Driver:</strong> ${dr}</div>
-    <hr style="margin-top:10px" />
-    <div class="small-muted">Loaded cargo group summary will appear after scanning.</div>
+    <div style="margin-top:6px"><strong>Bundle Ref:</strong> ${br}</div>
+    <hr style="margin-top:10px;border:none;border-top:1px solid #e5e7eb" />
+    <div class="small-muted">Loaded cargo summary will appear after scanning.</div>
   `;
-  // copy flag
   document.getElementById('previewFlag').textContent = document.getElementById('auto-flag').textContent || '';
 }
 
-/* proceed to scanner from form */
+document.getElementById('input-delivery').addEventListener('input',updateFormPreview);
+document.getElementById('input-vehicle-no').addEventListener('input',updateFormPreview);
+document.getElementById('input-country').addEventListener('input',()=>{
+  updateFlagFromCountryInput();
+  updateFormPreview();
+});
+document.getElementById('input-driver').addEventListener('input',updateFormPreview);
+document.getElementById('input-bundle-ref').addEventListener('input',updateFormPreview);
+
 document.getElementById('proceed-to-scan').addEventListener('click',()=>{
+  const delivery = document.getElementById('input-delivery').value.trim();
+  const vehicleNo = document.getElementById('input-vehicle-no').value.trim();
+  
+  if(!delivery || !vehicleNo){
+    alert('Delivery No. and Vehicle No. are required.');
+    return;
+  }
+  
   showPage('page-scanner');
-  // keep the form data in a global currentForm object
   currentForm = readForm();
-  // preview ref updated
   updateFormPreview();
 });
 
-/* save form-only to history (no scanning) */
 function readForm(){
   return {
     delivery: document.getElementById('input-delivery').value || '',
@@ -637,276 +1336,511 @@ function readForm(){
     region: document.getElementById('input-country').value || '',
     flag: document.getElementById('auto-flag').textContent || '',
     driver: document.getElementById('input-driver').value || '',
+    bundleRef: document.getElementById('input-bundle-ref').value || '',
     date: document.getElementById('input-date').value,
     time: document.getElementById('input-time').value,
-    summaryCounts: JSON.parse(serializeCounts()) // snapshot
+    summaryCounts: JSON.parse(serializeCounts())
   };
 }
+
 document.getElementById('save-form').addEventListener('click',()=>{
+  const delivery = document.getElementById('input-delivery').value.trim();
+  const vehicleNo = document.getElementById('input-vehicle-no').value.trim();
+  
+  if(!delivery || !vehicleNo){
+    alert('Delivery No. and Vehicle No. are required.');
+    return;
+  }
+  
   const f=readForm();
   saveHistoryRecord({meta:f, created:new Date().toISOString()});
   alert('Form saved into History.');
 });
 
-/* small helper: serialize countsBySpec into plain structure for storage */
 function serializeCounts(){
   const out={};
   for(const s of Object.keys(countsBySpec)){
     out[s]={};
-    for(const c of Object.keys(countsBySpec[s])) out[s][c]=Array.from(countsBySpec[s][c]);
+    for(const c of Object.keys(countsBySpec[s])){
+      out[s][c]=Array.from(countsBySpec[s][c]);
+    }
   }
   return JSON.stringify(out);
 }
+
 function restoreCountsFromSnapshot(snapshot){
   countsBySpec={};
+  chargeOrderBySpec={};
+  
   for(const s of Object.keys(snapshot||{})){
     countsBySpec[s]={};
     for(const c of Object.keys(snapshot[s])){
       countsBySpec[s][c]= new Set(snapshot[s][c]);
     }
+    chargeOrderBySpec[s] = Object.keys(snapshot[s]);
   }
-  // recompute totalBundles
+  
   totalBundles=0;
-  for(const s of Object.keys(countsBySpec)) for(const c of Object.keys(countsBySpec[s])) totalBundles += countsBySpec[s][c].size;
+  for(const s of Object.keys(countsBySpec)){
+    for(const c of Object.keys(countsBySpec[s])){
+      totalBundles += countsBySpec[s][c].size;
+    }
+  }
+  
   refreshUI();
 }
 
-/* preview modal: build print layout */
-function buildPreviewContent(){
-  const meta = currentForm || {delivery:'',vehicleNo:'',region:'',flag:'',driver:'',date:new Date().toLocaleDateString(),time:new Date().toLocaleTimeString()};
-  const summaryHtml = (() => {
-    let html='';
-    for(const spec of Object.keys(countsBySpec)){
-      html += `<div style="font-weight:700;margin-top:8px">${spec}</div>`;
-      for(const ch of Object.keys(countsBySpec[spec])){
-        html += `<div style="display:flex;justify-content:space-between;padding:4px 0"><div>${ch}</div><div>${countsBySpec[spec][ch].size} bundles</div></div>`;
+/* ================================
+   ENHANCED PRINT OUTPUT
+   ================================ */
+
+let currentForm = null;
+
+/**
+ * Build cargo summary with grouped bundle references
+ * Format:
+ * CARGO_DESCRIPTION
+ * MATERIAL_NUMBER          BUNDLE_COUNT
+ *                         [BUNDLE_REF_1]
+ *                         [BUNDLE_REF_2]
+ */
+function buildCargoSummary(){
+  let summaryHtml = '';
+  
+  for(const spec of Object.keys(countsBySpec)){
+    summaryHtml += `<div class="cargo-header">${spec}</div>`;
+    
+    const charges=countsBySpec[spec];
+    for(const charge of (chargeOrderBySpec[spec] || [])){
+      const bundleSet=charges[charge];
+      const bundleCount=bundleSet.size;
+      
+      // Sort bundle references for consistent output
+      const sortedBundles = Array.from(bundleSet).sort();
+      
+      // Cargo detail row with material number and bundle count
+      summaryHtml += `
+        <div class="cargo-detail">
+          <div class="cargo-detail-code">${charge}</div>
+          <div class="cargo-detail-count">${bundleCount} bundle${bundleCount > 1 ? 's' : ''}</div>
+        </div>
+      `;
+      
+      // Bundle reference lines
+      summaryHtml += '<div class="bundle-refs">';
+      for(const bundleRef of sortedBundles){
+        summaryHtml += `<div class="bundle-ref-line">${bundleRef}</div>`;
       }
+      summaryHtml += '</div>';
     }
-    if(!html) html = '<div class="small-muted">No bundles scanned yet.</div>';
-    return html;
-  })();
-
-  const created = meta.date || new Date().toLocaleDateString();
-  const time = meta.time || new Date().toLocaleTimeString();
-
-  const html = `
-    <div class="print-layout">
-      <div style="display:flex;justify-content:space-between;align-items:center">
-        <div><strong>Cargo Loading Form</strong><div class="small-muted">Loading Cargo</div></div>
-        <div class="small-muted">Date: ${created} &nbsp;&nbsp; Time: ${time}</div>
-      </div>
-      <hr />
-      <div style="margin-top:8px"><strong>Delivery Number:</strong> ${meta.delivery || '___'}</div>
-      <div style="margin-top:6px"><strong>Vehicle Number:</strong> ${meta.vehicleNo || '___'}</div>
-      <div style="margin-top:6px"><strong>Vehicle Region:</strong> ${meta.region || '___'} ${meta.flag?(' '+meta.flag):''}</div>
-      <div style="margin-top:6px"><strong>Driver Name:</strong> ${meta.driver || '___'}</div>
-      <hr />
-      <div style="margin-top:8px"><strong>Loaded Cargo (group summary)</strong></div>
-      <div>${summaryHtml}</div>
-      <hr style="margin-top:12px" />
-      <div class="small-muted">Generated by Offline Bundle QR Scanner</div>
-    </div>
-  `;
-  return html;
+  }
+  
+  if(!summaryHtml){
+    summaryHtml = '<div style="color:#666;font-style:italic">No bundles scanned</div>';
+  }
+  
+  return summaryHtml;
 }
 
-/* open preview modal */
-let currentForm = null;
+function buildPreviewContent(){
+  const meta = currentForm || {
+    delivery:'',vehicleNo:'',region:'',flag:'',driver:'',bundleRef:'',
+    date:new Date().toLocaleDateString(),
+    time:new Date().toLocaleTimeString()
+  };
+  
+  const created = meta.date || new Date().toLocaleDateString();
+  const time = meta.time || new Date().toLocaleTimeString();
+  const cargoSummaryHtml = buildCargoSummary();
+
+  return `
+    <div class="print-layout">
+      <div class="print-header">
+        CARGO LOADING SUMMARY
+      </div>
+
+      <div class="print-section">
+        <div class="print-section-title">SHIPMENT DETAILS</div>
+        <div style="font-size:12px;margin-bottom:8px">
+          <div style="margin:2px 0"><strong>Delivery:</strong> ${meta.delivery || 'N/A'}</div>
+          <div style="margin:2px 0"><strong>Vehicle:</strong> ${meta.vehicleNo || 'N/A'} ${meta.flag ? meta.flag : ''}</div>
+          <div style="margin:2px 0"><strong>Region:</strong> ${meta.region || 'N/A'}</div>
+          <div style="margin:2px 0"><strong>Driver:</strong> ${meta.driver || 'N/A'}</div>
+          <div style="margin:2px 0"><strong>Bundle Ref:</strong> ${meta.bundleRef || 'N/A'}</div>
+          <div style="margin:2px 0"><strong>Date/Time:</strong> ${created} ${time}</div>
+        </div>
+      </div>
+
+      <div class="print-section">
+        <div class="print-section-title">CARGO SUMMARY</div>
+        ${cargoSummaryHtml}
+        <div class="print-total">
+          TOTAL BUNDLE:-  ${totalBundles}
+        </div>
+      </div>
+
+      <div class="print-footer">
+        Generated on ${new Date().toLocaleString()} | Offline Bundle QR Scanner
+      </div>
+    </div>
+  `;
+}
+
 document.getElementById('open-preview').addEventListener('click',()=>{
-  // if no form filled (user came via scan-only), create meta from date/time only
-  if(!currentForm) {
-    currentForm = {delivery:'',vehicleNo:'',region:'',flag:'',driver:'',date:new Date().toLocaleDateString(),time:new Date().toLocaleTimeString()};
+  if(!currentForm){
+    currentForm = {
+      delivery:'',vehicleNo:'',region:'',flag:'',driver:'',bundleRef:'',
+      date:new Date().toLocaleDateString(),
+      time:new Date().toLocaleTimeString()
+    };
   }
   document.getElementById('previewContent').innerHTML = buildPreviewContent();
-  document.getElementById('previewModal').style.display='flex';
+  document.getElementById('previewModal').classList.add('active');
 });
 
-/* close preview */
-document.getElementById('closePreview').addEventListener('click',()=>document.getElementById('previewModal').style.display='none');
+document.getElementById('closePreview').addEventListener('click',()=>{
+  document.getElementById('previewModal').classList.remove('active');
+});
 
-/* print and send */
 document.getElementById('doPrint').addEventListener('click',()=>{
-  // open temporary window with print layout
   const win = window.open('','_blank');
-  win.document.write('<html><head><title>Print</title></head><body>');
-  win.document.write(document.getElementById('previewContent').innerHTML);
-  win.document.write('</body></html>');
+  if(!win){
+    alert('Pop-up blocked. Please allow pop-ups for this site.');
+    return;
+  }
+  
+  win.document.write(`
+    <html>
+      <head>
+        <title>Cargo Loading Summary</title>
+        <style>
+          body { 
+            font-family: 'Courier New', monospace; 
+            padding: 16px; 
+            line-height: 1.4;
+            background: #fff;
+          }
+          .print-layout { 
+            max-width: 800px; 
+            margin: 0 auto;
+            color: #000;
+          }
+          .print-header {
+            border-bottom: 2px solid #000;
+            padding-bottom: 12px;
+            margin-bottom: 12px;
+            text-align: center;
+            font-weight: 700;
+            font-size: 14px;
+          }
+          .print-section {
+            margin-bottom: 12px;
+          }
+          .print-section-title {
+            font-weight: 700;
+            font-size: 13px;
+            margin-bottom: 8px;
+            border-bottom: 1px dashed #000;
+            padding-bottom: 4px;
+          }
+          .cargo-header {
+            font-weight: 700;
+            font-size: 12px;
+            margin-bottom: 4px;
+          }
+          .cargo-detail {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            padding-left: 2em;
+            margin-bottom: 2px;
+          }
+          .cargo-detail-count {
+            text-align: right;
+            min-width: 120px;
+          }
+          .bundle-refs {
+            padding-left: 3em;
+            margin-top: 2px;
+            margin-bottom: 8px;
+          }
+          .bundle-ref-line {
+            font-family: 'Courier New', monospace;
+            font-size: 11px;
+            margin: 1px 0;
+          }
+          .print-total {
+            border-top: 2px solid #000;
+            border-bottom: 2px solid #000;
+            padding: 6px 0;
+            text-align: right;
+            font-weight: 700;
+            font-size: 12px;
+            margin-top: 10px;
+          }
+          .print-footer {
+            text-align: center;
+            color: #333;
+            font-size: 10px;
+            margin-top: 12px;
+            border-top: 1px solid #ccc;
+            padding-top: 8px;
+          }
+        </style>
+      </head>
+      <body>
+        ${document.getElementById('previewContent').innerHTML}
+      </body>
+    </html>
+  `);
   win.document.close();
   win.focus();
-  // show print dialog
-  setTimeout(()=>{ win.print(); },300);
+  setTimeout(()=>{ win.print(); }, 300);
 });
 
-/* send (simulated) */
 document.getElementById('doSend').addEventListener('click',()=>{
-  // simulate send: here you can integrate network logic if wanted (kept client-only per requirements)
-  alert('Record "sent" (simulation). You can implement actual send logic where needed.');
+  alert('Record "sent" (simulation). Implement actual send logic as needed.');
 });
 
-/* save the record to history (including summary) */
 document.getElementById('save-record').addEventListener('click',()=>{
   if(!currentForm){
-    currentForm = {delivery:'',vehicleNo:'',region:'',flag:'',driver:'',date:new Date().toLocaleDateString(),time:new Date().toLocaleTimeString()};
+    currentForm = {
+      delivery:'',vehicleNo:'',region:'',flag:'',driver:'',bundleRef:'',
+      date:new Date().toLocaleDateString(),
+      time:new Date().toLocaleTimeString()
+    };
   }
-  // snapshot of counts
   const snapshot = JSON.parse(serializeCounts());
   const rec = {meta:currentForm, summary:snapshot, created:new Date().toISOString(), totalBundles};
   saveHistoryRecord(rec);
   alert('Record saved to History.');
 });
 
-/* history storage helpers */
+/* ================================
+   HISTORY MANAGEMENT
+   ================================ */
+
 const HISTORY_KEY = 'bundleHistory_v1';
-function loadHistory(){ try{ const raw=localStorage.getItem(HISTORY_KEY); return raw?JSON.parse(raw):[]; }catch(e){return [];} }
-function saveHistoryList(list){ localStorage.setItem(HISTORY_KEY, JSON.stringify(list)); }
+
+function loadHistory(){
+  try{
+    const raw=localStorage.getItem(HISTORY_KEY);
+    return raw?JSON.parse(raw):[];
+  }catch(e){
+    return [];
+  }
+}
+
+function saveHistoryList(list){
+  try{
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(list));
+  }catch(e){
+    alert('Storage quota exceeded. Consider deleting old records.');
+  }
+}
+
 function saveHistoryRecord(rec){
   const list = loadHistory();
   list.unshift(rec);
-  // cap history length (optional) e.g. 300
-  if(list.length>500) list.pop();
+  
+  if(list.length > 300){
+    if(!confirm('You have 300+ history records. Delete oldest 100?')){
+      list.shift();
+      return;
+    }
+    list.splice(300);
+  }
+  
   saveHistoryList(list);
   renderHistory();
 }
 
-/* render history list */
 let historySelectedIndex = null;
+
 function renderHistory(){
   const list = loadHistory();
-  const out = document.getElementById('historyList'); out.innerHTML='';
-  if(list.length===0) out.innerHTML='<div class="small-muted">No history yet.</div>';
-  list.forEach((r,idx)=>{
-    const div=document.createElement('div'); div.className='historyItem';
-    const left=document.createElement('div'); left.style.flex='1';
-    const title = r.meta && r.meta.delivery ? `${r.meta.delivery} — ${r.meta.vehicleNo||'no vehicle'}` : `Record ${new Date(r.created).toLocaleString()}`;
-    left.innerHTML = `<div style="font-weight:700">${title}</div><div class="small-muted">${new Date(r.created).toLocaleString()}</div>`;
-    const right=document.createElement('div');
-    const btnSel=document.createElement('button'); btnSel.textContent='Select'; btnSel.className='small';
-    btnSel.addEventListener('click',()=>{ selectHistory(idx); });
-    right.appendChild(btnSel);
-    div.appendChild(left); div.appendChild(right);
-    out.appendChild(div);
-  });
-  // clear selected panel
+  const out = document.getElementById('historyList');
+  out.innerHTML='';
+  
+  if(list.length===0){
+    out.innerHTML='<div class="small-muted">No history yet.</div>';
+  } else {
+    list.forEach((r,idx)=>{
+      const div=document.createElement('div');
+      div.className='historyItem';
+      div.setAttribute('role','listitem');
+      
+      const left=document.createElement('div');
+      left.style.flex='1';
+      const title = r.meta && r.meta.delivery ? `${r.meta.delivery} — ${r.meta.vehicleNo||'no vehicle'}` : `Record ${new Date(r.created).toLocaleString()}`;
+      left.innerHTML = `<div style="font-weight:700">${title}</div><div class="small-muted">${new Date(r.created).toLocaleString()}</div>`;
+      
+      const right=document.createElement('div');
+      const btnSel=document.createElement('button');
+      btnSel.textContent='Select';
+      btnSel.className='small';
+      btnSel.setAttribute('aria-label', `Select history record ${title}`);
+      btnSel.addEventListener('click',()=>{ selectHistory(idx); });
+      
+      right.appendChild(btnSel);
+      div.appendChild(left);
+      div.appendChild(right);
+      out.appendChild(div);
+    });
+  }
+  
   document.getElementById('historySelected').innerHTML = '<div class="small-muted">Select a record to view details</div>';
 }
 
-/* show selected history */
 function selectHistory(idx){
   historySelectedIndex = idx;
   const list = loadHistory();
   const r = list[idx];
   if(!r) return;
+  
   const el = document.getElementById('historySelected');
   const meta = r.meta || {};
+  
   let summaryHtml='';
   if(r.summary){
-    for(const spec of Object.keys(r.summary)){ summaryHtml += `<div style="font-weight:700">${spec}</div>`; for(const c of Object.keys(r.summary[spec])) summaryHtml += `<div style="display:flex;justify-content:space-between;padding:4px 0"><div>${c}</div><div>${r.summary[spec][c].length} bundles</div></div>`; }
-  } else summaryHtml = '<div class="small-muted">No summary</div>';
-  el.innerHTML = `<div><strong>Delivery:</strong> ${meta.delivery||''}</div><div><strong>Vehicle:</strong> ${meta.vehicleNo||''} ${meta.flag?('<span class="flag-box">'+meta.flag+'</span>'):''}</div><div style="margin-top:8px"><strong>Driver:</strong> ${meta.driver||''}</div><div style="margin-top:8px"><strong>When:</strong> ${new Date(r.created).toLocaleString()}</div><hr />${summaryHtml}`;
+    for(const spec of Object.keys(r.summary)){
+      summaryHtml += `<div style="font-weight:700;margin-top:8px">${spec}</div>`;
+      for(const c of Object.keys(r.summary[spec])){
+        summaryHtml += `<div style="display:flex;justify-content:space-between;padding:4px 0"><div>${c}</div><div>${r.summary[spec][c].length} bundles</div></div>`;
+      }
+    }
+  } else {
+    summaryHtml = '<div class="small-muted">No summary</div>';
+  }
+  
+  el.innerHTML = `
+    <div><strong>Delivery:</strong> ${meta.delivery||'N/A'}</div>
+    <div><strong>Vehicle:</strong> ${meta.vehicleNo||'N/A'} ${meta.flag?meta.flag:''}</div>
+    <div style="margin-top:8px"><strong>Bundle Ref:</strong> ${meta.bundleRef||'N/A'}</div>
+    <div style="margin-top:8px"><strong>Driver:</strong> ${meta.driver||'N/A'}</div>
+    <div style="margin-top:8px"><strong>When:</strong> ${new Date(r.created).toLocaleString()}</div>
+    <hr style="border:none;border-top:1px solid #e5e7eb;margin:8px 0" />
+    ${summaryHtml}
+  `;
 }
 
-/* history delete selected */
 document.getElementById('history-delete').addEventListener('click',()=>{
   if(historySelectedIndex===null) return alert('Select a record first.');
   if(!confirm('Delete selected history record?')) return;
+  
   const list = loadHistory();
   list.splice(historySelectedIndex,1);
   saveHistoryList(list);
   historySelectedIndex = null;
   renderHistory();
 });
+
 document.getElementById('history-reopen').addEventListener('click',()=>{
   if(historySelectedIndex===null) return alert('Select a record first.');
+  
   const list = loadHistory();
   const r = list[historySelectedIndex];
-  // restore counts and open scanner with the meta
+  
   if(r){
     restoreCountsFromSnapshot(r.summary || {});
     currentForm = r.meta || {};
-    // set form inputs to meta (if available)
+    
     if(currentForm){
       document.getElementById('input-delivery').value = currentForm.delivery || '';
       document.getElementById('input-vehicle-no').value = currentForm.vehicleNo || '';
       document.getElementById('input-country').value = currentForm.region || '';
       document.getElementById('input-driver').value = currentForm.driver || '';
+      document.getElementById('input-bundle-ref').value = currentForm.bundleRef || '';
       document.getElementById('auto-flag').textContent = currentForm.flag || '';
       fillDateTimeInputs();
       updateFormPreview();
     }
+    
     showPage('page-scanner');
   }
 });
 
-/* delete all history */
 document.getElementById('del-all-history').addEventListener('click',()=>{
   if(!confirm('Delete ALL history records?')) return;
   saveHistoryList([]);
   renderHistory();
 });
 
-/* export CSV (top-level) - uses same export function */
 document.getElementById('btn-export').addEventListener('click',exportCSV);
 
-/* -------------------------
-   Country name -> flag auto detection
-   Strategy:
-   - Accept 2-letter ISO (e.g. QA, qa) => convert to flag by Regional Indicator Symbols
-   - Provide a small lookup table for common country names -> ISO codes
-   - If not found, keep blank (user can still type emoji manually)
-   ------------------------- */
+/* ================================
+   COUNTRY TO FLAG CONVERSION
+   ================================ */
+
 const COUNTRY_LOOKUP = {
   "qatar":"QA","uae":"AE","united arab emirates":"AE","saudi arabia":"SA","kuwait":"KW","oman":"OM","bahrain":"BH",
   "india":"IN","pakistan":"PK","united states":"US","usa":"US","united kingdom":"GB","uk":"GB","canada":"CA","australia":"AU",
   "egypt":"EG","turkey":"TR","germany":"DE","france":"FR","spain":"ES","italy":"IT","china":"CN","japan":"JP","south korea":"KR"
 };
+
 function countryNameToISO(name){
   if(!name) return null;
   const s = name.trim().toLowerCase();
   if(s.length===2 && /^[a-z]{2}$/.test(s)) return s.toUpperCase();
   if(COUNTRY_LOOKUP[s]) return COUNTRY_LOOKUP[s];
-  // try to extract if user put "Qatar 🇶🇦" -> check for emoji already present
   const emoji = name.match(/[\u{1F1E6}-\u{1F1FF}]{2}/u);
-  if(emoji) return null; // already has flag
+  if(emoji) return null;
   return null;
 }
+
 function isoToFlag(iso){
   if(!iso || iso.length!==2) return '';
-  const A = 0x1F1E6;
-  const chars = [...iso.toUpperCase()].map(c => String.fromCodePoint(A + c.charCodeAt(0) - 65)).join('');
-  return chars;
+  return [...iso.toUpperCase()]
+    .map(c => String.fromCodePoint(127397 + c.charCodeAt(0)))
+    .join('');
 }
+
 function updateFlagFromCountryInput(){
   const v = document.getElementById('input-country').value || '';
-  // if already contains regional indicator (flag emoji), show it
   const emoji = v.match(/[\u{1F1E6}-\u{1F1FF}]{2}/u);
-  if(emoji){ document.getElementById('auto-flag').textContent = emoji[0]; return; }
+  
+  if(emoji){
+    document.getElementById('auto-flag').textContent = emoji[0];
+    return;
+  }
+  
   const iso = countryNameToISO(v);
-  if(iso){ document.getElementById('auto-flag').textContent = isoToFlag(iso); return; }
-  // as fallback, if user typed a known country name containing spaces, try lookup by words
+  if(iso){
+    document.getElementById('auto-flag').textContent = isoToFlag(iso);
+    return;
+  }
+  
   const tokens = v.toLowerCase().split(/\s+/).filter(Boolean);
-  for(const t of tokens){ if(COUNTRY_LOOKUP[t]){ document.getElementById('auto-flag').textContent = isoToFlag(COUNTRY_LOOKUP[t]); return; } }
+  for(const t of tokens){
+    if(COUNTRY_LOOKUP[t]){
+      document.getElementById('auto-flag').textContent = isoToFlag(COUNTRY_LOOKUP[t]);
+      return;
+    }
+  }
+  
   document.getElementById('auto-flag').textContent = '';
 }
 
-/* -------------------------
-   Small initialization
-   ------------------------- */
+/* ================================
+   INITIALIZATION
+   ================================ */
+
 refreshUI();
 fillDateTimeInputs();
 updateFlagFromCountryInput();
 
-/* keep export button in scanner area working */
-document.getElementById('btn-export-csv').addEventListener('click',exportCSV);
-
-/* allow Enter+Ctrl in manualQr to add quickly */
 document.getElementById('manualQr').addEventListener('keydown',(e)=>{
-  if(e.ctrlKey && e.key==='Enter'){ document.getElementById('btn-add-manual').click(); }
+  if(e.ctrlKey && e.key==='Enter'){
+    document.getElementById('btn-add-manual').click();
+  }
 });
 
-/* ensure preview modal clicks outside close */
 document.getElementById('previewModal').addEventListener('click',(ev)=>{
-  if(ev.target===document.getElementById('previewModal')) document.getElementById('previewModal').style.display='none';
+  if(ev.target===document.getElementById('previewModal')){
+    document.getElementById('previewModal').classList.remove('active');
+  }
 });
+
 </script>
 </body>
 </html>
