@@ -3,1844 +3,693 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Offline Bundle QR Scanner - Enhanced Torch & Print</title>
+  <title>Bundle Scanner — Steel Dispatch</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0&display=swap" rel="stylesheet">
+
   <style>
-    * { box-sizing: border-box; }
-    
-    body{
-      font-family:Arial,Helvetica,sans-serif;
-      background:#f3f4f6;
-      margin:0;
-      padding:12px;
-      display:flex;
-      justify-content:center;
+    /* DESIGN TOKENS */
+    :root {
+      --color-bg:#F5F7FA; --color-primary:#2563EB; --color-primary-hover:#1D4ED8;
+      --color-primary-light:rgba(37,99,235,0.08); --color-primary-medium:rgba(37,99,235,0.15);
+      --color-success:#22C55E; --color-success-light:rgba(34,197,94,0.1);
+      --color-warning:#F59E0B; --color-warning-light:rgba(245,158,11,0.1);
+      --color-danger:#EF4444; --color-danger-hover:#DC2626; --color-danger-light:rgba(239,68,68,0.1);
+      --color-card:#FFFFFF; --color-text:#111827; --color-text-secondary:#6B7280;
+      --color-border:#E5E7EB; --color-surface:#F8FAFC; --color-surface-hover:#F1F5F9;
+      --font-primary:'Inter','Roboto',system-ui,-apple-system,sans-serif;
+      --font-mono:'Courier New',monospace;
+      --fs-title:28px; --fs-subtitle:18px; --fs-body:15px; --fs-caption:13px; --fs-stat:42px;
+      --sp-xs:4px; --sp-sm:8px; --sp-md:16px; --sp-lg:24px; --sp-xl:32px;
+      --r-sm:8px; --r-md:14px; --r-lg:20px; --r-full:9999px;
+      --shadow-sm:0 1px 3px rgba(0,0,0,0.04); --shadow-md:0 2px 12px rgba(0,0,0,0.06);
+      --shadow-lg:0 8px 28px rgba(0,0,0,0.12); --shadow-primary:0 4px 14px rgba(37,99,235,0.25);
+      --tr:0.2s ease; --tr-fast:0.1s ease;
     }
-    
-    .wrap{width:100%;max-width:960px}
-    .card{background:#fff;padding:12px;border-radius:10px;box-shadow:0 6px 20px rgba(0,0,0,0.08)}
-    h1{font-size:24px;margin:4px 0 10px;text-align:center}
-    
-    .controls{display:flex;gap:8px;flex-wrap:wrap}
-    
-    button{
-      flex:1;
-      padding:12px;
-      border-radius:8px;
-      border:0;
-      background:#2563eb;
-      color:#fff;
-      font-weight:600;
-      cursor:pointer;
-      min-height:44px;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      font-size:14px;
-      transition:background 0.2s, box-shadow 0.2s;
-    }
-    
-    button:hover{ background:#1d4ed8; box-shadow:0 2px 8px rgba(37,99,235,0.3); }
-    button:focus{ outline:2px solid #2563eb; outline-offset:2px; }
-    button:active{ transform:scale(0.98); }
-    
-    button.ghost{background:#f59e0b}
-    button.ghost:hover{background:#d97706}
-    button.danger{background:#ef4444}
-    button.danger:hover{background:#dc2626}
-    button.success{background:#10b981}
-    button.success:hover{background:#059669}
-    
-    button.small{
-      flex:unset;
-      padding:10px 12px;
-      font-size:13px;
-      min-height:44px;
-    }
-    
-    /* Torch Button Styling */
-    #btn-torch{
-      display:none;
-      background:#fbbf24;
-      color:#000;
-      font-weight:600;
-      min-height:48px;
-      font-size:15px;
-    }
-    #btn-torch:hover{ background:#f59e0b; }
-    #btn-torch.torch-on{ 
-      background:#fcd34d; 
-      box-shadow:0 0 12px rgba(252,211,77,0.6), inset 0 0 0 2px #f59e0b;
-    }
-    
-    #btn-torch-unsupported{
-      display:none;
-      background:#9ca3af;
-      color:#fff;
-      cursor:not-allowed;
-      opacity:0.6;
-      font-size:12px;
-      min-height:48px;
-    }
-    
-    #reader{
-      width:100%;
-      height:250px;
-      border-radius:8px;
-      overflow:hidden;
-      display:flex;
-      justify-content:center;
-      align-items:center;
-      background:#000;
-      position:relative;
-    }
-    
-    video{
-      width:100%;
-      height:250px;
-      object-fit:cover;
-      border-radius:8px;
-      display:block;
-    }
-    
-    canvas{display:none}
-    
-    #no-camera{
-      color:#fff;
-      font-size:14px;
-      text-align:center;
-    }
-    
-    textarea{
-      width:100%;
-      padding:10px;
-      border-radius:8px;
-      border:2px solid #e5e7eb;
-      margin-top:6px;
-      font-family:monospace;
-      font-size:13px;
-      transition:border-color 0.2s;
-      resize:vertical;
-    }
-    
-    textarea:focus{
-      outline:none;
-      border-color:#2563eb;
-      box-shadow:0 0 0 3px rgba(37,99,235,0.1);
-    }
-    
-    .resultBox,.summary{
-      margin-top:12px;
-      padding:8px;
-      background:#fff;
-      border-radius:8px;
-      border:1px solid #e6eefc;
-      max-height:260px;
-      overflow:auto;
-    }
-    
-    .logItem{
-      padding:10px;
-      border-radius:6px;
-      background:#eef2ff;
-      margin-bottom:8px;
-      font-family:monospace;
-      font-size:13px;
-    }
-    
-    .spec{font-weight:700;margin-top:10px;color:#111827}
-    
-    .chargeRow{
-      display:flex;
-      justify-content:space-between;
-      gap:8px;
-      margin:6px 0;
-      padding:8px;
-      background:#f8fafc;
-      border-radius:6px;
-    }
-    
-    .bundles{
-      font-family:monospace;
-      font-size:13px;
-      color:#064e3b;
-      margin-left:6px;
-    }
-    
-    .muted{color:#4b5563;font-size:13px}
-    .small-muted{font-size:12px;color:#4b5563}
-    
-    .footer{
-      display:flex;
-      justify-content:space-between;
-      align-items:center;
-      margin-top:10px;
-      gap:8px;
-      flex-wrap:wrap;
-    }
-    
-    /* Pages */
-    .page{display:none}
-    .page.active{display:block}
-    
-    .two-col{display:grid;grid-template-columns:1fr 420px;gap:12px}
-    
-    .form-row{display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap}
-    
-    .form-row input,
-    .form-row select{
-      flex:1;
-      padding:10px;
-      border-radius:6px;
-      border:2px solid #e5e7eb;
-      font-size:14px;
-      transition:border-color 0.2s;
-      min-width:150px;
-    }
-    
-    .form-row input:focus,
-    .form-row select:focus{
-      outline:none;
-      border-color:#2563eb;
-      box-shadow:0 0 0 3px rgba(37,99,235,0.1);
-    }
-    
-    .history-list{max-height:400px;overflow:auto}
-    .historyItem{
-      padding:10px;
-      border-radius:6px;
-      border:1px solid #e6eefc;
-      margin-bottom:8px;
-      display:flex;
-      justify-content:space-between;
-      align-items:center;
-      gap:8px;
-    }
-    
-    .preview-modal{
-      position:fixed;
-      left:0;
-      top:0;
-      right:0;
-      bottom:0;
-      background:rgba(0,0,0,0.5);
-      display:none;
-      align-items:center;
-      justify-content:center;
-      z-index:1000;
-    }
-    
-    .preview-modal.active{display:flex}
-    
-    .preview-card{
-      background:#fff;
-      padding:18px;
-      border-radius:8px;
-      max-width:800px;
-      width:95%;
-      max-height:90vh;
-      overflow-y:auto;
-    }
-    
-    /* Print Layout Styles */
-    .print-layout{
-      font-family:'Courier New',monospace;
-      background:#fff;
-      padding:16px;
-      border-radius:6px;
-      line-height:1.4;
-      color:#000;
-    }
-    
-    .print-header{
-      border-bottom:2px solid #000;
-      padding-bottom:12px;
-      margin-bottom:12px;
-      text-align:center;
-      font-weight:700;
-      font-size:14px;
-    }
-    
-    .print-section{
-      margin-bottom:12px;
-    }
-    
-    .print-section-title{
-      font-weight:700;
-      font-size:13px;
-      color:#000;
-      margin-bottom:8px;
-      border-bottom:1px dashed #000;
-      padding-bottom:4px;
-    }
-    
-    .cargo-item{
-      margin-bottom:10px;
-      padding-left:0;
-    }
-    
-    .cargo-header{
-      font-weight:700;
-      font-size:12px;
-      margin-bottom:4px;
-      color:#000;
-    }
-    
-    .cargo-detail{
-      display:flex;
-      justify-content:space-between;
-      font-size:12px;
-      padding-left:2em;
-      margin-bottom:2px;
-    }
-    
-    .cargo-detail-code{
-      flex:1;
-      text-align:left;
-    }
-    
-    .cargo-detail-count{
-      text-align:right;
-      min-width:120px;
-    }
-    
-    .bundle-refs{
-      padding-left:3em;
-      margin-top:2px;
-      margin-bottom:8px;
-    }
-    
-    .bundle-ref-line{
-      font-family:'Courier New',monospace;
-      font-size:11px;
-      color:#000;
-      margin:1px 0;
-    }
-    
-    .print-total{
-      border-top:2px solid #000;
-      border-bottom:2px solid #000;
-      padding:6px 0;
-      text-align:right;
-      font-weight:700;
-      font-size:12px;
-      margin-top:10px;
-    }
-    
-    .print-footer{
-      text-align:center;
-      color:#333;
-      font-size:10px;
-      margin-top:12px;
-      border-top:1px solid #ccc;
-      padding-top:8px;
-    }
-    
-    .flag-box{font-size:20px;padding-left:6px}
-    
-    .left-col{min-width:280px}
-    .summary-panel{width:420px}
-    
-    .history-layout{
-      display:flex;
-      gap:12px;
-      margin-top:10px;
-    }
-    
-    .scanner-layout{
-      display:grid;
-      grid-template-columns:1fr 1fr;
-      gap:8px;
-    }
-    
-    .controls-bar{
-      display:flex;
-      gap:6px;
-      flex-wrap:wrap;
-      margin-bottom:10px;
-      align-items:stretch;
-    }
-    
-    .loading-indicator{
-      display:none;
-      align-items:center;
-      justify-content:center;
-      gap:8px;
-      padding:12px;
-      background:#f0f9ff;
-      border-radius:8px;
-      border:2px solid #3b82f6;
-      color:#1e40af;
-      font-weight:600;
-      margin:8px 0;
-    }
-    
+    *{box-sizing:border-box}
+    body{font-family:var(--font-primary);background:var(--color-bg);color:var(--color-text);margin:0;padding:0;line-height:1.6;-webkit-font-smoothing:antialiased}
+    .material-symbols-rounded{font-variation-settings:'FILL' 0,'wght' 400,'GRAD' 0,'opsz' 24;font-size:24px;line-height:1;vertical-align:middle;user-select:none}
+
+    /* LAYOUT */
+    .app-wrap{width:100%;max-width:960px;margin:0 auto;padding:12px}
+    .app-card{background:var(--color-card);border-radius:var(--r-lg);box-shadow:var(--shadow-md);padding:var(--sp-lg);min-height:calc(100vh - 24px)}
+
+    /* APP HEADER */
+    .app-header{display:flex;align-items:center;gap:var(--sp-md);padding-bottom:var(--sp-lg);margin-bottom:var(--sp-lg);border-bottom:1px solid var(--color-border)}
+    .app-header-icon{width:48px;height:48px;border-radius:var(--r-md);background:var(--color-primary);color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+    .app-header-icon .material-symbols-rounded{font-size:26px}
+    .app-title{font-size:var(--fs-title);font-weight:700;margin:0;line-height:1.2;letter-spacing:-0.5px}
+    .app-subtitle{font-size:var(--fs-caption);color:var(--color-text-secondary);margin:0;font-weight:400}
+
+    /* PAGES */
+    .page{display:none} .page.active{display:block}
+    .page-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--sp-md)}
+    .page-title{display:flex;align-items:center;gap:var(--sp-sm);font-size:var(--fs-subtitle);font-weight:700}
+    .page-title .material-symbols-rounded{color:var(--color-primary)}
+
+    /* SECTION HEADER */
+    .section-header{display:flex;align-items:center;gap:var(--sp-sm);font-size:var(--fs-caption);font-weight:600;color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:0.5px;margin:var(--sp-lg) 0 var(--sp-md)}
+    .section-header .material-symbols-rounded{font-size:18px}
+    .section-header--compact{margin:0 0 var(--sp-sm);font-size:12px}
+
+    /* BUTTONS */
+    .btn{position:relative;overflow:hidden;display:inline-flex;align-items:center;justify-content:center;gap:var(--sp-sm);border:none;border-radius:var(--r-full);font-family:var(--font-primary);font-size:var(--fs-body);font-weight:600;cursor:pointer;min-height:56px;padding:0 var(--sp-lg);transition:background var(--tr),box-shadow var(--tr),transform var(--tr-fast),border-color var(--tr);-webkit-tap-highlight-color:transparent;user-select:none;white-space:nowrap}
+    .btn .material-symbols-rounded{font-size:20px}
+    .btn-primary{background:var(--color-primary);color:#fff}
+    .btn-primary:hover{background:var(--color-primary-hover);box-shadow:var(--shadow-primary)}
+    .btn-primary:active{transform:scale(0.97)}
+    .btn-secondary{background:var(--color-card);color:var(--color-text);border:2px solid var(--color-border)}
+    .btn-secondary:hover{border-color:var(--color-primary);color:var(--color-primary);background:var(--color-primary-light)}
+    .btn-secondary:active{transform:scale(0.97)}
+    .btn-danger{background:var(--color-danger);color:#fff}
+    .btn-danger:hover{background:var(--color-danger-hover);box-shadow:0 4px 14px rgba(239,68,68,0.25)}
+    .btn-danger:active{transform:scale(0.97)}
+    .btn-ghost{background:transparent;color:var(--color-text-secondary)}
+    .btn-ghost:hover{background:var(--color-surface-hover);color:var(--color-text)}
+    .btn-sm{min-height:44px;padding:0 var(--sp-md);font-size:var(--fs-caption)}
+    .btn-sm .material-symbols-rounded{font-size:18px}
+    .btn:disabled{opacity:0.45;cursor:not-allowed}
+    .btn:disabled:hover{box-shadow:none;transform:none}
+    .btn:focus-visible{outline:2px solid var(--color-primary);outline-offset:2px}
+    .ripple{position:absolute;border-radius:50%;background:rgba(255,255,255,0.35);transform:scale(0);animation:ripple-anim 0.6s ease-out;pointer-events:none}
+    .btn-secondary .ripple,.btn-ghost .ripple{background:rgba(37,99,235,0.12)}
+    @keyframes ripple-anim{to{transform:scale(4);opacity:0}}
+
+    /* INPUTS */
+    .input-field{position:relative;flex:1;min-width:0}
+    .input-field input{width:100%;height:52px;padding:20px 16px 6px;border:2px solid var(--color-border);border-radius:var(--r-md);font-family:var(--font-primary);font-size:var(--fs-body);color:var(--color-text);background:var(--color-card);transition:border-color var(--tr),box-shadow var(--tr);outline:none}
+    .input-field input:focus{border-color:var(--color-primary);box-shadow:0 0 0 4px var(--color-primary-light)}
+    .input-field input:disabled{background:var(--color-surface);color:var(--color-text-secondary);cursor:not-allowed}
+    .input-field label{position:absolute;left:16px;top:50%;transform:translateY(-50%);font-size:var(--fs-body);color:var(--color-text-secondary);pointer-events:none;transition:all var(--tr);background:var(--color-card);padding:0 4px}
+    .input-field input:focus~label,.input-field input:not(:placeholder-shown)~label{top:0;transform:translateY(-50%) scale(0.8);font-size:var(--fs-caption);color:var(--color-primary);font-weight:500}
+    .input-field--flag{flex:1}
+    .form-row{display:flex;gap:var(--sp-md);margin-bottom:var(--sp-md);flex-wrap:wrap}
+    .form-row>*{flex:1;min-width:140px}
+    .form-row .flag-box{flex:0 0 auto;min-width:auto}
+    .app-textarea{width:100%;height:60px;padding:14px 16px;border:2px solid var(--color-border);border-radius:var(--r-md);font-family:var(--font-mono);font-size:var(--fs-caption);color:var(--color-text);background:var(--color-card);transition:border-color var(--tr),box-shadow var(--tr);outline:none;resize:vertical}
+    .app-textarea:focus{border-color:var(--color-primary);box-shadow:0 0 0 4px var(--color-primary-light)}
+    .flag-box{font-size:24px;line-height:52px;padding-left:var(--sp-sm);width:52px;text-align:center;flex-shrink:0}
+
+    /* START PAGE */
+    .start-hero{background:linear-gradient(135deg,var(--color-primary) 0%,#1E40AF 100%);border-radius:var(--r-lg);padding:var(--sp-xl) var(--sp-lg);text-align:center;margin-bottom:var(--sp-lg)}
+    .stat-display{color:#fff}
+    .stat-label{font-size:var(--fs-caption);font-weight:500;opacity:0.85;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:var(--sp-xs)}
+    .stat-value{font-size:var(--fs-stat);font-weight:700;line-height:1;letter-spacing:-1px}
+    .start-hint{display:flex;align-items:center;justify-content:center;gap:var(--sp-xs);color:rgba(255,255,255,0.7);font-size:12px;margin-top:var(--sp-md)}
+    .start-hint .material-symbols-rounded{font-size:14px}
+    .start-actions{display:flex;flex-direction:column;gap:var(--sp-md)}
+    .start-actions .btn{width:100%}
+    .start-secondary{display:flex;gap:var(--sp-sm);flex-wrap:wrap}
+    .start-secondary .btn{flex:1;min-width:0}
+
+    /* LOADING FORM */
+    .form-grid{display:grid;grid-template-columns:1fr 380px;gap:var(--sp-lg);align-items:start}
+    .form-actions{display:flex;gap:var(--sp-sm);flex-wrap:wrap;margin-top:var(--sp-md)}
+    .form-actions .btn{flex:1;min-width:140px}
+    .form-preview-panel{background:var(--color-surface);border-radius:var(--r-lg);padding:var(--sp-md);border:1px solid var(--color-border)}
+    .form-preview-content{background:var(--color-card);border-radius:var(--r-md);padding:var(--sp-md);font-size:var(--fs-caption);margin-top:var(--sp-sm);min-height:60px}
+    .form-preview-hint{display:flex;align-items:center;gap:var(--sp-xs);font-size:12px;color:var(--color-text-secondary);margin-top:var(--sp-sm)}
+    .form-preview-hint .material-symbols-rounded{font-size:14px}
+    .preview-section-title{font-weight:700;font-size:var(--fs-caption)}
+    .preview-meta{font-size:12px;color:var(--color-text-secondary);margin-top:4px}
+    .preview-divider{height:1px;background:var(--color-border);margin:var(--sp-sm) 0}
+    .preview-row{margin-top:6px}
+    .preview-label{font-weight:600;color:var(--color-text)}
+    .preview-value{color:var(--color-text-secondary)}
+    .preview-hint{font-size:12px;color:var(--color-text-secondary)}
+
+    /* SCANNER PAGE */
+    .scanner-status{display:inline-flex;align-items:center;gap:var(--sp-sm);padding:6px 14px;border-radius:var(--r-full);font-size:12px;font-weight:600;background:var(--color-surface);color:var(--color-text-secondary);border:1px solid var(--color-border);margin-bottom:var(--sp-md)}
+    .scanner-status--active{background:var(--color-success-light);color:#15803D;border-color:rgba(34,197,94,0.3)}
+    .scanner-status--processing{background:var(--color-warning-light);color:#B45309;border-color:rgba(245,158,11,0.3)}
+    .status-dot{width:8px;height:8px;border-radius:50%;background:var(--color-text-secondary);flex-shrink:0}
+    .status-dot--active{background:var(--color-success);animation:pulse 1.5s infinite}
+    .status-dot--processing{background:var(--color-warning);animation:pulse 1s infinite}
+    @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+    .controls-bar{display:flex;gap:var(--sp-sm);flex-wrap:wrap;margin-bottom:var(--sp-md);align-items:stretch}
+    .controls-bar .btn{flex:1;min-width:0}
+    .loading-indicator{display:none;align-items:center;justify-content:center;gap:var(--sp-sm);padding:14px;background:var(--color-warning-light);border-radius:var(--r-md);border:1px solid rgba(245,158,11,0.3);color:#B45309;font-weight:600;font-size:var(--fs-caption);margin-bottom:var(--sp-md)}
     .loading-indicator.active{display:flex}
-    
-    .spinner{
-      display:inline-block;
-      width:16px;
-      height:16px;
-      border:2px solid #3b82f6;
-      border-top-color:transparent;
-      border-radius:50%;
-      animation:spin 0.8s linear infinite;
-    }
-    
-    @keyframes spin{
-      to{transform:rotate(360deg)}
-    }
-    
-    /* Torch Status Badge */
-    .torch-status{
-      display:none;
-      align-items:center;
-      gap:6px;
-      padding:8px 12px;
-      background:#fef08a;
-      border:1px solid #fcd34d;
-      border-radius:6px;
-      font-size:12px;
-      color:#713f12;
-      margin-bottom:8px;
-      font-weight:600;
-    }
-    
+    .spinner{display:inline-block;width:18px;height:18px;border:2.5px solid var(--color-warning);border-top-color:transparent;border-radius:50%;animation:spin 0.7s linear infinite;flex-shrink:0}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .torch-status{display:none;align-items:center;gap:var(--sp-sm);padding:8px 14px;background:var(--color-warning-light);border:1px solid rgba(245,158,11,0.3);border-radius:var(--r-full);font-size:12px;color:#92400E;margin-bottom:var(--sp-md);font-weight:600}
     .torch-status.active{display:flex}
-    
-    .torch-indicator{
-      display:inline-block;
-      width:8px;
-      height:8px;
-      background:#f59e0b;
-      border-radius:50%;
-      animation:pulse 1.5s infinite;
-    }
-    
-    @keyframes pulse{
-      0%, 100%{opacity:1}
-      50%{opacity:0.5}
-    }
-    
-    /* Responsive Design */
+    .torch-indicator{display:inline-block;width:8px;height:8px;background:var(--color-warning);border-radius:50%;animation:pulse 1.5s infinite}
+    .manual-entry{background:var(--color-surface);border-radius:var(--r-md);padding:var(--sp-md);border:1px solid var(--color-border);margin-bottom:var(--sp-md)}
+    .manual-entry-label{display:flex;align-items:center;gap:var(--sp-xs);font-size:var(--fs-caption);font-weight:600;color:var(--color-text);margin-bottom:var(--sp-sm)}
+    .manual-entry-label .material-symbols-rounded{font-size:16px;color:var(--color-primary)}
+    .manual-entry .btn{margin-top:var(--sp-sm)}
+
+    /* SCANNER LAYOUT */
+    .scanner-layout{display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-md);align-items:start}
+    .scanner-viewport{position:relative;width:100%;height:340px;border-radius:var(--r-lg);overflow:hidden;background:#0a0a0a}
+    .scanner-viewport #video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:none}
+    .scanner-viewport #canvas{display:none}
+    .scanner-placeholder{position:absolute;inset:0;text-align:center;color:#6b7280}
+    .scanner-placeholder-icon{display:block;font-size:48px!important;width:48px;margin:0 auto;margin-top:110px;opacity:0.5}
+    .scanner-placeholder-text{display:block;margin-top:var(--sp-sm);font-size:var(--fs-caption)}
+    .scan-frame{position:absolute;inset:40px;pointer-events:none;z-index:10}
+    .scan-corner{position:absolute;width:28px;height:28px;border:3px solid var(--color-primary)}
+    .scan-corner-tl{top:0;left:0;border-right:none;border-bottom:none;border-radius:var(--r-sm) 0 0 0}
+    .scan-corner-tr{top:0;right:0;border-left:none;border-bottom:none;border-radius:0 var(--r-sm) 0 0}
+    .scan-corner-bl{bottom:0;left:0;border-right:none;border-top:none;border-radius:0 0 0 var(--r-sm)}
+    .scan-corner-br{bottom:0;right:0;border-left:none;border-top:none;border-radius:0 0 var(--r-sm) 0}
+    .scan-line{position:absolute;left:4px;right:4px;height:3px;background:linear-gradient(90deg,transparent,var(--color-primary),transparent);box-shadow:0 0 8px rgba(37,99,235,0.6);animation:scan-move 2.5s ease-in-out infinite;border-radius:var(--r-full)}
+    @keyframes scan-move{0%{top:4px}50%{top:calc(100% - 7px)}100%{top:4px}}
+
+    /* FABs */
+    .fab{position:fixed;width:52px;height:52px;border-radius:50%;display:flex;align-items:center;justify-content:center;border:none;cursor:pointer;z-index:200;box-shadow:var(--shadow-lg);transition:transform var(--tr-fast);-webkit-tap-highlight-color:transparent}
+    .fab:active{transform:scale(0.9)}
+    .fab .material-symbols-rounded{font-size:24px}
+    .fab-torch{bottom:96px;right:var(--sp-md);background:var(--color-warning);color:#fff;display:none}
+    .fab-torch.torch-on{background:#FCD34D;color:#78350F;box-shadow:0 0 16px rgba(252,211,77,0.5),var(--shadow-lg)}
+    .fab-exit{position:fixed;top:var(--sp-md);right:var(--sp-md);width:44px;height:44px;background:rgba(0,0,0,0.65);color:#fff;backdrop-filter:blur(4px)}
+    .fab-exit .material-symbols-rounded{font-size:22px}
+
+    /* RECENT SCANS */
+    .resultBox{max-height:340px;overflow-y:auto;padding-right:4px}
+    .resultBox::-webkit-scrollbar{width:4px}
+    .resultBox::-webkit-scrollbar-thumb{background:var(--color-border);border-radius:var(--r-full)}
+    .timeline-item{display:flex;gap:var(--sp-sm);background:var(--color-card);border:1px solid var(--color-border);border-radius:var(--r-md);padding:var(--sp-md);margin-bottom:var(--sp-sm);transition:box-shadow var(--tr)}
+    .timeline-item:hover{box-shadow:var(--shadow-sm)}
+    .timeline-item-bar{width:4px;border-radius:var(--r-full);flex-shrink:0}
+    .timeline-item[data-status="added"] .timeline-item-bar{background:var(--color-success)}
+    .timeline-item[data-status="duplicate"] .timeline-item-bar{background:var(--color-warning)}
+    .timeline-item[data-status="invalid"] .timeline-item-bar{background:var(--color-danger)}
+    .timeline-item-content{flex:1;min-width:0}
+    .timeline-item-header{display:flex;justify-content:space-between;align-items:center;gap:var(--sp-sm);margin-bottom:4px}
+    .timeline-item-charge{font-weight:700;font-size:var(--fs-caption)}
+    .timeline-item-spec{font-size:12px;color:var(--color-text-secondary);margin-bottom:4px}
+    .timeline-item-bundle{font-family:var(--font-mono);font-size:11px;color:var(--color-text);background:var(--color-surface);padding:4px 8px;border-radius:var(--r-sm);margin-bottom:4px;word-break:break-all}
+    .timeline-item-time{font-size:11px;color:var(--color-text-secondary)}
+    .status-chip{display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:var(--r-full);font-size:11px;font-weight:600;white-space:nowrap}
+    .status-chip .material-symbols-rounded{font-size:13px}
+    .status-chip--added{background:var(--color-success-light);color:#15803D}
+    .status-chip--duplicate{background:var(--color-warning-light);color:#B45309}
+    .status-chip--invalid{background:var(--color-danger-light);color:#B91C1C}
+
+    /* SUMMARY & DASHBOARD CARDS */
+    .summary{margin-top:var(--sp-md)}
+    .summary #grouped{display:flex;flex-direction:column;gap:var(--sp-md)}
+    .dashboard-card{background:var(--color-card);border:1px solid var(--color-border);border-radius:var(--r-lg);padding:var(--sp-md);box-shadow:var(--shadow-sm)}
+    .dashboard-card-header{display:flex;align-items:center;gap:var(--sp-sm);padding-bottom:var(--sp-sm);margin-bottom:var(--sp-sm);border-bottom:1px solid var(--color-border)}
+    .dashboard-card-icon{font-size:20px!important;color:var(--color-primary);background:var(--color-primary-light);padding:6px;border-radius:var(--r-sm)}
+    .dashboard-card-title{font-weight:700;font-size:var(--fs-caption);color:var(--color-text)}
+    .charge-row{display:flex;justify-content:space-between;align-items:flex-start;gap:var(--sp-sm);padding:10px;background:var(--color-surface);border-radius:var(--r-md);margin-bottom:var(--sp-sm)}
+    .charge-row-info{flex:0 0 auto}
+    .charge-row-number{font-weight:700;font-size:var(--fs-caption)}
+    .charge-row-count{font-size:11px;color:var(--color-text-secondary);display:block;margin-top:2px}
+    .charge-row-bundles{flex:1;display:flex;flex-wrap:wrap;gap:4px;justify-content:flex-end;max-height:80px;overflow-y:auto}
+    .bundle-tag{font-family:var(--font-mono);font-size:10px;color:#065F46;background:var(--color-success-light);padding:2px 6px;border-radius:var(--r-sm);white-space:nowrap}
+
+    /* STICKY BOTTOM BAR */
+    .scanner-actions{position:sticky;bottom:0;left:0;right:0;display:flex;gap:var(--sp-sm);padding:var(--sp-md);background:rgba(255,255,255,0.95);backdrop-filter:blur(10px);border-top:1px solid var(--color-border);border-radius:0 0 var(--r-lg) var(--r-lg);margin:var(--sp-md) calc(-1 * var(--sp-lg)) calc(-1 * var(--sp-lg));z-index:50;align-items:center}
+    .scanner-actions .btn{flex:1}
+    .bundle-counter{display:flex;flex-direction:column;align-items:center;padding:0 var(--sp-md);flex-shrink:0}
+    .bundle-counter-label{font-size:10px;color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:0.5px}
+    .bundle-counter-value{font-size:var(--fs-stat);font-weight:700;color:var(--color-primary);line-height:1}
+
+    /* HISTORY PAGE */
+    .history-layout{display:flex;gap:var(--sp-lg);margin-top:var(--sp-sm);align-items:flex-start}
+    .history-list{flex:1;max-height:500px;overflow-y:auto;padding-right:4px}
+    .history-list::-webkit-scrollbar{width:4px}
+    .history-list::-webkit-scrollbar-thumb{background:var(--color-border);border-radius:var(--r-full)}
+    .history-card{display:flex;align-items:center;gap:var(--sp-md);background:var(--color-card);border:1px solid var(--color-border);border-radius:var(--r-md);padding:var(--sp-md);margin-bottom:var(--sp-sm);transition:box-shadow var(--tr),border-color var(--tr);cursor:pointer}
+    .history-card:hover{box-shadow:var(--shadow-sm);border-color:var(--color-primary-medium)}
+    .history-card-icon{width:40px;height:40px;border-radius:var(--r-sm);background:var(--color-primary-light);color:var(--color-primary);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+    .history-card-icon .material-symbols-rounded{font-size:22px}
+    .history-card-content{flex:1;min-width:0}
+    .history-card-title{font-weight:700;font-size:var(--fs-caption);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .history-card-meta{display:flex;align-items:center;gap:4px;font-size:12px;color:var(--color-text-secondary);margin-top:2px}
+    .history-card-meta .material-symbols-rounded{font-size:13px}
+    .history-detail-panel{width:340px;flex-shrink:0;background:var(--color-surface);border-radius:var(--r-lg);padding:var(--sp-md);border:1px solid var(--color-border)}
+    .history-detail{background:var(--color-card);border-radius:var(--r-md);padding:var(--sp-md);min-height:200px;font-size:var(--fs-caption);margin-top:var(--sp-sm)}
+    .history-detail-actions{display:flex;gap:var(--sp-sm);margin-top:var(--sp-sm);flex-wrap:wrap}
+    .history-detail-actions .btn{flex:1;min-width:0}
+    .detail-row{margin-bottom:6px}
+    .detail-label{font-weight:600;color:var(--color-text)}
+    .detail-value{color:var(--color-text-secondary)}
+    .detail-divider{height:1px;background:var(--color-border);margin:var(--sp-sm) 0}
+    .detail-spec-header{font-weight:700;margin-top:var(--sp-sm);font-size:var(--fs-caption)}
+    .detail-charge-row{display:flex;justify-content:space-between;padding:4px 0;font-size:12px}
+    .detail-charge-count{color:var(--color-text-secondary)}
+    .empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:var(--sp-sm);padding:var(--sp-xl);color:var(--color-text-secondary);font-size:var(--fs-caption);text-align:center}
+    .empty-state .material-symbols-rounded{font-size:40px;opacity:0.4}
+    .empty-state--compact{padding:var(--sp-lg)}
+
+    /* PREVIEW MODAL */
+    .preview-modal{position:fixed;left:0;top:0;right:0;bottom:0;background:rgba(0,0,0,0.5);backdrop-filter:blur(4px);display:none;align-items:center;justify-content:center;z-index:1000;padding:var(--sp-md)}
+    .preview-modal.active{display:flex}
+    .preview-card{background:var(--color-card);border-radius:var(--r-lg);max-width:800px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:var(--shadow-lg)}
+    .preview-card-header{display:flex;justify-content:space-between;align-items:center;padding:var(--sp-md) var(--sp-lg);border-bottom:1px solid var(--color-border);position:sticky;top:0;background:var(--color-card);z-index:1}
+    .preview-card-title{display:flex;align-items:center;gap:var(--sp-sm);font-weight:700;font-size:var(--fs-subtitle)}
+    .preview-card-title .material-symbols-rounded{color:var(--color-primary)}
+    .preview-card-actions{display:flex;gap:var(--sp-sm);flex-wrap:wrap}
+    .preview-card-body{padding:var(--sp-lg)}
+
+    /* PRINT LAYOUT (on-screen) */
+    .print-layout{font-family:var(--font-primary);background:var(--color-card);line-height:1.5;color:var(--color-text)}
+    .print-header{display:flex;flex-direction:column;align-items:center;gap:var(--sp-sm);border-bottom:2px solid var(--color-primary);padding-bottom:var(--sp-md);margin-bottom:var(--sp-md);text-align:center}
+    .print-header-icon{width:48px;height:48px;border-radius:var(--r-md);background:var(--color-primary-light);color:var(--color-primary);display:flex;align-items:center;justify-content:center}
+    .print-header-text{font-weight:700;font-size:var(--fs-subtitle);letter-spacing:0.5px}
+    .print-section{margin-bottom:var(--sp-md)}
+    .print-section-title{font-weight:700;font-size:var(--fs-caption);color:var(--color-primary);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:var(--sp-sm);padding-bottom:6px;border-bottom:1px dashed var(--color-border)}
+    .print-details{background:var(--color-surface);border-radius:var(--r-md);padding:var(--sp-md)}
+    .print-detail-row{margin:4px 0;font-size:var(--fs-caption)}
+    .print-detail-label{font-weight:600;color:var(--color-text)}
+    .print-detail-value{color:var(--color-text-secondary)}
+    .cargo-header{font-weight:700;font-size:var(--fs-caption);margin-bottom:var(--sp-sm);padding:6px 12px;background:var(--color-primary-light);color:var(--color-primary);border-radius:var(--r-sm);border-left:3px solid var(--color-primary)}
+    .cargo-detail{display:flex;justify-content:space-between;font-size:var(--fs-caption);padding:6px 12px;background:var(--color-surface);border-radius:var(--r-sm);margin-bottom:4px}
+    .cargo-detail-code{font-weight:600}
+    .cargo-detail-count{color:var(--color-text-secondary)}
+    .bundle-refs{padding:var(--sp-sm) 12px;margin-bottom:var(--sp-sm);background:var(--color-surface);border-radius:var(--r-sm);margin-top:-2px}
+    .bundle-ref-line{font-family:var(--font-mono);font-size:11px;color:var(--color-text-secondary);margin:2px 0}
+    .print-total{border-top:2px solid var(--color-text);padding:var(--sp-sm) 0;text-align:right;font-weight:700;font-size:var(--fs-caption);margin-top:var(--sp-md)}
+    .print-empty{color:var(--color-text-secondary);font-style:italic;font-size:var(--fs-caption);text-align:center;padding:var(--sp-lg)}
+    .print-footer{text-align:center;color:var(--color-text-secondary);font-size:11px;margin-top:var(--sp-md);border-top:1px solid var(--color-border);padding-top:var(--sp-sm)}
+
+    /* RESPONSIVE */
     @media (max-width:768px){
-      .two-col{
-        grid-template-columns:1fr;
-      }
-      
-      .scanner-layout{
-        grid-template-columns:1fr;
-      }
-      
-      #reader{
-        height:200px;
-      }
-      
-      video{
-        height:200px;
-      }
-      
-      .resultBox{
-        height:180px;
-      }
-      
-      .summary{
-        margin-top:10px;
-      }
-      
-      .summary-panel{
-        width:100%;
-      }
-      
-      .left-col{
-        min-width:100%;
-      }
-      
-      .chargeRow{
-        flex-direction:column;
-      }
-      
-      .historyItem{
-        flex-direction:column;
-        align-items:flex-start;
-      }
-      
-      .footer{
-        flex-direction:column;
-        width:100%;
-      }
-      
-      .footer button{
-        width:100%;
-      }
-      
-      h1{
-        font-size:20px;
-      }
-      
-      .controls-bar{
-        flex-direction:column;
-      }
-      
-      .controls-bar button{
-        width:100%;
-      }
-      
-      .print-layout{
-        padding:12px;
-        font-size:11px;
-      }
-      
-      .cargo-detail{
-        flex-direction:column;
-      }
-      
-      .cargo-detail-count{
-        min-width:auto;
-      }
+      .form-grid{grid-template-columns:1fr}
+      .scanner-layout{grid-template-columns:1fr}
+      .history-layout{flex-direction:column}
+      .history-detail-panel{width:100%}
+      .controls-bar{flex-direction:column}
+      .controls-bar .btn{width:100%}
+      .scanner-actions{flex-wrap:wrap}
+      .scanner-actions .btn{flex:1 1 45%}
+      .bundle-counter{flex:1 1 100%;order:-1;padding:var(--sp-sm) 0}
     }
-    
     @media (max-width:480px){
-      body{
-        padding:8px;
-      }
-      
-      .card{
-        padding:10px;
-      }
-      
-      #reader{
-        height:140px;
-      }
-      
-      video{
-        height:140px;
-      }
-      
-      .resultBox{
-        height:120px;
-      }
-      
-      .summary{
-        height:120px;
-      }
-      
-      .form-row input,
-      .form-row select{
-        min-width:100%;
-      }
-      
-      .controls-bar button{
-        flex:1;
-        font-size:12px;
-        padding:8px;
-      }
-      
-      button.small{
-        font-size:12px;
-        padding:8px 10px;
-      }
-      
-      h1{
-        font-size:18px;
-        margin:2px 0 8px;
-      }
-      
-      .history-layout{
-        flex-direction:column;
-      }
-      
-      textarea{
-        font-size:12px;
-      }
-      
-      .print-layout{
-        padding:8px;
-        font-size:10px;
-      }
-      
-      .preview-card{
-        padding:12px;
-      }
+      .app-wrap{padding:6px}
+      .app-card{padding:var(--sp-md)}
+      .app-title{font-size:22px}
+      .form-row{flex-direction:column;gap:var(--sp-sm)}
+      .form-row>*{min-width:100%}
+      .flag-box{display:none}
+      .start-secondary{flex-direction:column}
+      .start-secondary .btn{width:100%}
+      .scanner-viewport{height:280px}
+      .scan-frame{inset:24px}
+      .scanner-placeholder-icon{margin-top:80px}
+      .preview-card-header{padding:var(--sp-sm) var(--sp-md);flex-wrap:wrap;gap:var(--sp-sm)}
+      .preview-card-title{font-size:var(--fs-caption)}
+      .preview-card-body{padding:var(--sp-md)}
     }
-    
     @media print{
-      body,
-      .card,
-      .controls,
-      .footer,
-      .controls-bar,
-      button,
-      .scanner-layout{
-        display:none !important;
-      }
-      
-      .preview-modal.active{
-        position:static;
-        background:none;
-      }
-      
-      .print-layout{
-        max-width:100%;
-        box-shadow:none;
-        padding:8px;
-      }
+      body,.app-wrap,.app-card,.app-header,.controls-bar,.scanner-layout,.scanner-actions,.fab,.page-header,.scanner-status,.torch-status,.manual-entry,.loading-indicator,.section-header{display:none!important}
+      .preview-modal.active{position:static;background:none;padding:0}
+      .preview-card{box-shadow:none;max-height:none;border-radius:0}
+      .preview-card-header{display:none}
+      .preview-card-body{padding:0}
     }
   </style>
 </head>
 <body>
-  <div class="wrap">
-    <div class="card">
-      <h1>📱 SCANNER</h1>
+  <div class="app-wrap"><div class="app-card">
 
-      <!-- ===== START PAGE ===== -->
-      <div id="page-start" class="page active">
-        <div style="display:flex;gap:10px;align-items:flex-start">
-          <div style="flex:1">
-            <p class="muted">Choose mode:</p>
-            <div class="controls" style="margin-bottom:10px">
-              <button id="opt-loading" aria-label="Start loading form with scanning">Loading (with form)</button>
-              <button id="opt-scan-only" class="ghost" aria-label="Start scanner without form">Scan Only</button>
-            </div>
-            <div class="muted small-muted">Other actions</div>
-            <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
-              <button id="open-history" class="small" aria-label="View scan history">History</button>
-              <button id="btn-export" class="ghost small" aria-label="Export scans to CSV">Export CSV</button>
-              <button id="btn-reset" class="danger small" aria-label="Clear all counts and reset">Reset Counts</button>
-            </div>
-          </div>
-          <div style="width:100%;max-width:260px;flex-shrink:0">
-            <div style="background:#f8fafc;padding:10px;border-radius:8px">
-              <div class="small-muted">Total bundles</div>
-              <div style="font-size:28px;font-weight:700;margin-top:6px" id="totalCount">0</div>
-              <div class="small-muted" style="margin-top:8px">Recent scans: 80 max</div>
-            </div>
-          </div>
-        </div>
+    <header class="app-header">
+      <div class="app-header-icon"><span class="material-symbols-rounded">qr_code_scanner</span></div>
+      <div>
+        <h1 class="app-title">Bundle Scanner</h1>
+        <p class="app-subtitle">Steel Plant Dispatch Operations</p>
       </div>
+    </header>
 
-      <!-- ===== LOADING FORM PAGE ===== -->
-      <div id="page-loading" class="page">
-        <div style="display:flex;justify-content:space-between;align-items:center">
-          <div style="font-weight:700">📋 Cargo Loading Form</div>
-          <div style="display:flex;gap:8px">
-            <button id="back-to-start" class="ghost small" aria-label="Go back to start page">Back</button>
-          </div>
+    <!-- START PAGE -->
+    <div id="page-start" class="page active">
+      <div class="start-hero">
+        <div class="stat-display">
+          <div class="stat-label">Total Bundles Scanned</div>
+          <div class="stat-value" id="totalCount">0</div>
         </div>
-
-        <div style="margin-top:10px" class="two-col">
-          <div>
-            <div class="form-row">
-              <input id="input-delivery" placeholder="Delivery No." aria-label="Delivery number" />
-              <input id="input-date" placeholder="Date" readonly aria-label="Date" />
-            </div>
-            <div class="form-row">
-              <input id="input-vehicle-no" placeholder="Vehicle Number" aria-label="Vehicle number" />
-              <input id="input-time" placeholder="Time" readonly aria-label="Time" />
-            </div>
-            <div class="form-row">
-              <input id="input-country" placeholder="Vehicle Region (type country or ISO code)" aria-label="Vehicle region or country" />
-              <div class="flag-box" id="auto-flag" title="Flag will appear when you type country / ISO code" aria-label="Country flag"></div>
-            </div>
-            <div class="form-row">
-              <input id="input-driver" placeholder="Driver Name (Optional)" aria-label="Driver name" />
-            </div>
-            <div class="form-row">
-              <input id="input-bundle-ref" placeholder="Bundle Reference (e.g., BR-123456)" aria-label="Bundle reference number" />
-            </div>
-
-            <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
-              <button id="proceed-to-scan" class="ghost" aria-label="Proceed to camera scanner">Proceed to Scanner</button>
-              <button id="save-form" class="small" aria-label="Save form to history without scanning">Save Form</button>
-            </div>
-          </div>
-
-          <div class="left-col">
-            <div style="background:#f8fafc;padding:10px;border-radius:8px">
-              <div class="small-muted">📋 Form preview</div>
-              <div style="margin-top:10px;padding:10px;background:#fff;border-radius:6px;font-size:13px" id="form-preview">
-                <!-- filled by JS -->
-              </div>
-              <div style="margin-top:10px" class="small-muted">Loaded cargo will appear in scanner summary.</div>
-            </div>
-          </div>
-        </div>
+        <div class="start-hint"><span class="material-symbols-rounded">info</span><span>Recent scans: 80 max</span></div>
       </div>
-
-      <!-- ===== SCANNER PAGE ===== -->
-      <div id="page-scanner" class="page">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-          <div style="font-weight:700">📸 Scanner</div>
-          <div style="display:flex;gap:6px;flex-wrap:wrap">
-            <button id="back-to-start-2" class="small" aria-label="Exit scanner and return to start">Exit</button>
-          </div>
-        </div>
-
-        <!-- Torch Status Badge -->
-        <div class="torch-status" id="torch-status" role="status" aria-label="Torch status indicator">
-          <span class="torch-indicator"></span>
-          <span>Torch is ON</span>
-        </div>
-
-        <!-- Camera Controls -->
-        <div class="controls-bar">
-          <button id="btn-start" class="small ghost" aria-label="Start camera">▶️ Start Camera</button>
-          <button id="btn-stop" class="small danger" style="display:none" aria-label="Stop camera">⏹️ Stop Camera</button>
-          <button id="btn-torch" class="small" aria-label="Toggle torch flashlight">🔦 Torch OFF</button>
-          <button id="btn-torch-unsupported" class="small" title="Torch not supported on this device" disabled>🔦 Torch N/A</button>
-          <button id="btn-export-csv" class="ghost small" aria-label="Export scans to CSV file">📥 Export CSV</button>
-        </div>
-
-        <!-- Loading Indicator -->
-        <div class="loading-indicator" id="loading-indicator" role="status" aria-live="polite">
-          <span class="spinner"></span>
-          <span>Processing scan...</span>
-        </div>
-
-        <!-- Manual QR Entry -->
-        <div style="margin-bottom:10px;padding:10px;background:#f8fafc;border-radius:6px;border:1px solid #e5e7eb">
-          <label for="manualQr" style="display:block;margin-bottom:6px;font-weight:600;font-size:13px">📄 Manual QR Entry (optional)</label>
-          <textarea id="manualQr" placeholder="Paste QR content here..." style="height:60px" aria-label="Manual QR code entry"></textarea>
-          <button id="btn-add-manual" class="small" style="margin-top:6px" aria-label="Add manually entered QR code">Add Manual</button>
-        </div>
-
-        <!-- Scanner Layout -->
-        <div class="scanner-layout">
-          <!-- LEFT SIDE: Camera -->
-          <div>
-            <div id="reader" role="img" aria-label="Camera preview area">
-              <video id="video" playsinline autoplay muted aria-label="Camera video feed"></video>
-              <canvas id="canvas"></canvas>
-              <div id="no-camera" style="color:#fff;text-align:center">📷 Camera not started</div>
-            </div>
-          </div>
-
-          <!-- RIGHT SIDE: Recent Scans -->
-          <div>
-            <div class="resultBox" id="scansBox" role="log" aria-label="Recent scans list" aria-live="polite">
-              <strong class="muted">📍 Recent scans</strong>
-              <div id="scansList"></div>
-            </div>
-          </div>
-        </div>
-
-        <!-- SUMMARY BELOW -->
-        <div class="summary" id="summaryBox" role="region" aria-label="Grouped summary by specification">
-          <strong class="muted">📊 Grouped summary</strong>
-          <div id="grouped"></div>
-        </div>
-
-        <div class="footer" style="margin-top:10px">
-          <button id="open-preview" class="small" aria-label="Open preview for printing">🖨️ Preview & Print</button>
-          <button id="save-record" class="small ghost" aria-label="Save this scan record to history">💾 Save Record</button>
-          <div class="muted" aria-label="Total bundles scanned">Total bundles: <span id="totalCount2">0</span></div>
-        </div>
+      <div class="section-header"><span class="material-symbols-rounded">play_circle</span><span>Choose Mode</span></div>
+      <div class="start-actions">
+        <button id="opt-loading" class="btn btn-primary" aria-label="Start loading form with scanning"><span class="material-symbols-rounded">assignment</span>Loading (with form)</button>
+        <button id="opt-scan-only" class="btn btn-secondary" aria-label="Start scanner without form"><span class="material-symbols-rounded">qr_code_scanner</span>Scan Only</button>
       </div>
-
-      <!-- ===== HISTORY PAGE ===== -->
-      <div id="page-history" class="page">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-          <div style="font-weight:700">📚 History / Reports</div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap">
-            <button id="back-from-history" class="small" aria-label="Go back to start page">Back</button>
-            <button id="del-all-history" class="danger small" aria-label="Delete all history records">Delete All</button>
-          </div>
-        </div>
-
-        <div class="history-layout">
-          <div style="flex:1">
-            <div class="history-list" id="historyList" role="list"></div>
-          </div>
-          <div style="width:100%;max-width:360px;flex-shrink:0">
-            <div style="background:#f8fafc;padding:10px;border-radius:8px">
-              <div class="small-muted">Selected record</div>
-              <div id="historySelected" style="margin-top:10px;background:#fff;padding:10px;border-radius:6px;min-height:160px;font-size:13px">
-                Select a record to view details
-              </div>
-              <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
-                <button id="history-delete" class="danger small" aria-label="Delete selected history record">Delete Selected</button>
-                <button id="history-reopen" class="ghost small" aria-label="Reopen selected record in scanner">Reopen in Scanner</button>
-              </div>
-            </div>
-          </div>
-        </div>
+      <div class="section-header"><span class="material-symbols-rounded">more_horiz</span><span>Other Actions</span></div>
+      <div class="start-secondary">
+        <button id="open-history" class="btn btn-secondary btn-sm" aria-label="View scan history"><span class="material-symbols-rounded">history</span>History</button>
+        <button id="btn-export" class="btn btn-secondary btn-sm" aria-label="Export scans to CSV"><span class="material-symbols-rounded">download</span>Export CSV</button>
+        <button id="btn-reset" class="btn btn-danger btn-sm" aria-label="Clear all counts and reset"><span class="material-symbols-rounded">delete_sweep</span>Reset Counts</button>
       </div>
-
-      <!-- ===== PREVIEW MODAL ===== -->
-      <div id="previewModal" class="preview-modal" role="dialog" aria-label="Print preview modal" aria-modal="true">
-        <div class="preview-card">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-            <div style="font-weight:700">🖨️ Cargo Summary Report</div>
-            <div style="display:flex;gap:8px;flex-wrap:wrap">
-              <button id="closePreview" class="small" aria-label="Close preview modal">Close</button>
-              <button id="doPrint" class="ghost small" aria-label="Open print dialog">🖨️ Print</button>
-              <button id="doSend" class="small" aria-label="Send record (simulated)">Send</button>
-            </div>
-          </div>
-          <div style="margin-top:12px" id="previewContent">
-            <!-- print layout -->
-          </div>
-        </div>
-      </div>
-
     </div>
-  </div>
+
+    <!-- LOADING FORM PAGE -->
+    <div id="page-loading" class="page">
+      <div class="page-header">
+        <div class="page-title"><span class="material-symbols-rounded">assignment</span><span>Cargo Loading Form</span></div>
+        <button id="back-to-start" class="btn btn-ghost btn-sm" aria-label="Go back to start page"><span class="material-symbols-rounded">arrow_back</span>Back</button>
+      </div>
+      <div class="form-grid">
+        <div class="form-fields">
+          <div class="form-row">
+            <div class="input-field"><input id="input-delivery" type="text" placeholder=" " aria-label="Delivery number" /><label for="input-delivery">Delivery No.</label></div>
+            <div class="input-field"><input id="input-date" type="text" readonly placeholder=" " aria-label="Date" /><label for="input-date">Date</label></div>
+          </div>
+          <div class="form-row">
+            <div class="input-field"><input id="input-vehicle-no" type="text" placeholder=" " aria-label="Vehicle number" /><label for="input-vehicle-no">Vehicle Number</label></div>
+            <div class="input-field"><input id="input-time" type="text" readonly placeholder=" " aria-label="Time" /><label for="input-time">Time</label></div>
+          </div>
+          <div class="form-row">
+            <div class="input-field input-field--flag"><input id="input-country" type="text" placeholder=" " aria-label="Vehicle region or country" /><label for="input-country">Vehicle Region / Country</label></div>
+            <div class="flag-box" id="auto-flag" title="Flag will appear when you type country / ISO code" aria-label="Country flag"></div>
+          </div>
+          <div class="form-row">
+            <div class="input-field"><input id="input-driver" type="text" placeholder=" " aria-label="Driver name" /><label for="input-driver">Driver Name (Optional)</label></div>
+          </div>
+          <div class="form-row">
+            <div class="input-field"><input id="input-bundle-ref" type="text" placeholder=" " aria-label="Bundle reference number" /><label for="input-bundle-ref">Bundle Reference (e.g., BR-123456)</label></div>
+          </div>
+          <div class="form-actions">
+            <button id="proceed-to-scan" class="btn btn-primary" aria-label="Proceed to camera scanner"><span class="material-symbols-rounded">qr_code_scanner</span>Proceed to Scanner</button>
+            <button id="save-form" class="btn btn-secondary btn-sm" aria-label="Save form to history without scanning"><span class="material-symbols-rounded">save</span>Save Form</button>
+          </div>
+        </div>
+        <div class="form-preview-panel">
+          <div class="section-header section-header--compact"><span class="material-symbols-rounded">preview</span><span>Form Preview</span></div>
+          <div class="form-preview-content" id="form-preview"></div>
+          <div class="form-preview-hint"><span class="material-symbols-rounded">info</span><span>Loaded cargo will appear in scanner summary.</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SCANNER PAGE -->
+    <div id="page-scanner" class="page">
+      <button id="back-to-start-2" class="fab fab-exit" aria-label="Exit scanner and return to start"><span class="material-symbols-rounded">close</span></button>
+      <div class="page-header"><div class="page-title"><span class="material-symbols-rounded">qr_code_scanner</span><span>Scanner</span></div></div>
+      <div class="scanner-status" id="scanner-status"><span class="status-dot status-dot--off"></span><span class="scanner-status-text">Camera Off</span></div>
+      <div class="torch-status" id="torch-status" role="status" aria-label="Torch status indicator"><span class="torch-indicator"></span><span>Torch is ON</span></div>
+      <div class="controls-bar">
+        <button id="btn-start" class="btn btn-secondary btn-sm" aria-label="Start camera"><span class="material-symbols-rounded">play_arrow</span>Start Camera</button>
+        <button id="btn-stop" class="btn btn-danger btn-sm" style="display:none" aria-label="Stop camera"><span class="material-symbols-rounded">stop</span>Stop Camera</button>
+        <button id="btn-torch-unsupported" class="btn btn-ghost btn-sm" title="Torch not supported on this device" disabled><span class="material-symbols-rounded">flashlight_off</span>Torch N/A</button>
+        <button id="btn-export-csv" class="btn btn-secondary btn-sm" aria-label="Export scans to CSV file"><span class="material-symbols-rounded">download</span>Export CSV</button>
+      </div>
+      <button id="btn-torch" class="fab fab-torch" aria-label="Toggle torch flashlight"><span class="material-symbols-rounded">flashlight_off</span></button>
+      <div class="loading-indicator" id="loading-indicator" role="status" aria-live="polite"><span class="spinner"></span><span>Processing scan...</span></div>
+      <div class="manual-entry">
+        <label for="manualQr" class="manual-entry-label"><span class="material-symbols-rounded">edit_note</span>Manual QR Entry (optional)</label>
+        <textarea id="manualQr" class="app-textarea" placeholder="Paste QR content here..." aria-label="Manual QR code entry"></textarea>
+        <button id="btn-add-manual" class="btn btn-secondary btn-sm" aria-label="Add manually entered QR code"><span class="material-symbols-rounded">add</span>Add Manual</button>
+      </div>
+      <div class="scanner-layout">
+        <div class="scanner-camera-col">
+          <div id="reader" class="scanner-viewport" role="img" aria-label="Camera preview area">
+            <video id="video" playsinline autoplay muted aria-label="Camera video feed"></video>
+            <canvas id="canvas"></canvas>
+            <div id="no-camera" class="scanner-placeholder"><span class="material-symbols-rounded scanner-placeholder-icon">photo_camera</span><span class="scanner-placeholder-text">Camera not started</span></div>
+            <div class="scan-frame">
+              <div class="scan-corner scan-corner-tl"></div><div class="scan-corner scan-corner-tr"></div>
+              <div class="scan-corner scan-corner-bl"></div><div class="scan-corner scan-corner-br"></div>
+              <div class="scan-line"></div>
+            </div>
+          </div>
+        </div>
+        <div class="scanner-scans-col">
+          <div class="section-header section-header--compact"><span class="material-symbols-rounded">receipt_long</span><span>Recent Scans</span></div>
+          <div class="resultBox" id="scansBox" role="log" aria-label="Recent scans list" aria-live="polite"><div id="scansList"></div></div>
+        </div>
+      </div>
+      <div class="section-header" style="margin-top:var(--sp-lg)"><span class="material-symbols-rounded">analytics</span><span>Grouped Summary</span></div>
+      <div class="summary" id="summaryBox" role="region" aria-label="Grouped summary by specification"><div id="grouped"></div></div>
+      <div class="scanner-actions">
+        <button id="open-preview" class="btn btn-primary" aria-label="Open preview for printing"><span class="material-symbols-rounded">print</span>Preview &amp; Print</button>
+        <button id="save-record" class="btn btn-secondary" aria-label="Save this scan record to history"><span class="material-symbols-rounded">save</span>Save Record</button>
+        <div class="bundle-counter"><span class="bundle-counter-label">Total</span><span class="bundle-counter-value" id="totalCount2">0</span></div>
+      </div>
+    </div>
+
+    <!-- HISTORY PAGE -->
+    <div id="page-history" class="page">
+      <div class="page-header">
+        <div class="page-title"><span class="material-symbols-rounded">history</span><span>History / Reports</span></div>
+        <div style="display:flex;gap:var(--sp-sm);flex-wrap:wrap">
+          <button id="back-from-history" class="btn btn-ghost btn-sm" aria-label="Go back to start page"><span class="material-symbols-rounded">arrow_back</span>Back</button>
+          <button id="del-all-history" class="btn btn-danger btn-sm" aria-label="Delete all history records"><span class="material-symbols-rounded">delete_sweep</span>Delete All</button>
+        </div>
+      </div>
+      <div class="history-layout">
+        <div style="flex:1;min-width:0"><div class="history-list" id="historyList" role="list"></div></div>
+        <div class="history-detail-panel">
+          <div class="section-header section-header--compact"><span class="material-symbols-rounded">description</span><span>Selected Record</span></div>
+          <div id="historySelected" class="history-detail"><div class="empty-state empty-state--compact"><span class="material-symbols-rounded">touch_app</span><span>Select a record to view details</span></div></div>
+          <div class="history-detail-actions">
+            <button id="history-delete" class="btn btn-danger btn-sm" aria-label="Delete selected history record"><span class="material-symbols-rounded">delete</span>Delete</button>
+            <button id="history-reopen" class="btn btn-secondary btn-sm" aria-label="Reopen selected record in scanner"><span class="material-symbols-rounded">restart_alt</span>Reopen</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PREVIEW MODAL -->
+    <div id="previewModal" class="preview-modal" role="dialog" aria-label="Print preview modal" aria-modal="true">
+      <div class="preview-card">
+        <div class="preview-card-header">
+          <div class="preview-card-title"><span class="material-symbols-rounded">description</span>Cargo Summary Report</div>
+          <div class="preview-card-actions">
+            <button id="closePreview" class="btn btn-ghost btn-sm" aria-label="Close preview modal"><span class="material-symbols-rounded">close</span>Close</button>
+            <button id="doPrint" class="btn btn-primary btn-sm" aria-label="Open print dialog"><span class="material-symbols-rounded">print</span>Print</button>
+            <button id="doSend" class="btn btn-secondary btn-sm" aria-label="Send record"><span class="material-symbols-rounded">send</span>Send</button>
+          </div>
+        </div>
+        <div class="preview-card-body" id="previewContent"></div>
+      </div>
+    </div>
+
+  </div></div>
 
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
-
 <script>
-/* ================================
-   CORE SCANNER CODE
-   ================================ */
+/* CORE SCANNER CODE */
+let countsBySpec={},totalBundles=0,recentScans=[],scannerActive=false,stream=null,chargeOrderBySpec={},
+video=document.getElementById('video'),canvas=document.getElementById('canvas'),ctx=canvas.getContext('2d'),
+barcodeDetector=null,detectInterval=null,torchOn=false,track=null,useJsQr=false,isProcessing=false,audioContext=null,torchSupported=false;
 
-let countsBySpec={}, totalBundles=0, recentScans=[],
-scannerActive=false, stream=null, chargeOrderBySpec = {},
-video=document.getElementById('video'),
-canvas=document.getElementById('canvas'),
-ctx=canvas.getContext('2d'),
-barcodeDetector=null,
-detectInterval=null,
-torchOn=false,
-track=null,
-useJsQr=false,
-isProcessing=false,
-audioContext=null,
-torchSupported=false;
-
-/* ================================
-   TORCH MANAGEMENT
-   ================================ */
-
+/* TORCH MANAGEMENT */
 function updateTorchUI(){
-  const torchBtn = document.getElementById('btn-torch');
-  const torchBtnUnsupported = document.getElementById('btn-torch-unsupported');
-  const torchStatus = document.getElementById('torch-status');
-  
+  var torchBtn=document.getElementById('btn-torch'),torchBtnU=document.getElementById('btn-torch-unsupported'),torchStatus=document.getElementById('torch-status');
   if(torchSupported){
-    torchBtn.style.display = 'inline-flex';
-    torchBtnUnsupported.style.display = 'none';
-    
-    if(torchOn){
-      torchBtn.classList.add('torch-on');
-      torchBtn.textContent = '🔦 Torch ON';
-      torchStatus.classList.add('active');
-    } else {
-      torchBtn.classList.remove('torch-on');
-      torchBtn.textContent = '🔦 Torch OFF';
-      torchStatus.classList.remove('active');
-    }
-  } else {
-    torchBtn.style.display = 'none';
-    torchBtnUnsupported.style.display = 'inline-flex';
-    torchStatus.classList.remove('active');
-  }
+    torchBtn.style.display='inline-flex';torchBtnU.style.display='none';
+    if(torchOn){torchBtn.classList.add('torch-on');torchBtn.innerHTML='<span class="material-symbols-rounded">flashlight_on</span>';torchStatus.classList.add('active');}
+    else{torchBtn.classList.remove('torch-on');torchBtn.innerHTML='<span class="material-symbols-rounded">flashlight_off</span>';torchStatus.classList.remove('active');}
+  }else{torchBtn.style.display='none';torchBtnU.style.display='inline-flex';torchStatus.classList.remove('active');}
 }
-
-document.getElementById('btn-torch').addEventListener('click', async ()=>{
-  if(!track){
-    alert('Camera not ready. Please start the camera first.');
-    return;
-  }
-  
-  if(!torchSupported){
-    alert('Torch is not supported on this device.');
-    return;
-  }
-  
-  torchOn = !torchOn;
-  
-  try{
-    await track.applyConstraints({advanced:[{torch:torchOn}]});
-    updateTorchUI();
-    console.log('✓ Torch toggled:', torchOn ? 'ON' : 'OFF');
-  }catch(e){
-    console.error('✗ Torch toggle failed:', e);
-    torchOn = !torchOn;
-    alert('Failed to toggle torch: ' + (e.message || 'Unknown error'));
-  }
+document.getElementById('btn-torch').addEventListener('click',async()=>{
+  if(!track){alert('Camera not ready. Please start the camera first.');return;}
+  if(!torchSupported){alert('Torch is not supported on this device.');return;}
+  torchOn=!torchOn;
+  try{await track.applyConstraints({advanced:[{torch:torchOn}]});updateTorchUI();}catch(e){torchOn=!torchOn;alert('Failed to toggle torch: '+(e.message||'Unknown error'));}
 });
+document.getElementById('btn-torch-unsupported').addEventListener('click',()=>{alert('Torch/Flashlight is not supported on this device.');});
 
-document.getElementById('btn-torch-unsupported').addEventListener('click', ()=>{
-  alert('Torch/Flashlight is not supported on this device. Please ensure:\n• You are using a mobile device with a camera\n• Your browser supports the Torch API\n• Camera permissions are granted');
-});
+/* AUDIO */
+function getAudioContext(){try{if(!audioContext){audioContext=new(window.AudioContext||window.webkitAudioContext)();}return audioContext;}catch(e){return null;}}
+function playBeep(freq=700,duration=120){try{var c=getAudioContext();if(!c)return;var o=c.createOscillator();o.type='sine';o.frequency.value=freq;o.connect(c.destination);o.start();setTimeout(()=>o.stop(),duration);}catch(e){}}
+function doVibrate(){try{if(navigator.vibrate)navigator.vibrate(140);}catch(e){}}
+function showLoading(show){var l=document.getElementById('loading-indicator');if(l)l.classList.toggle('active',show);}
 
-/* ================================
-   AUDIO CONTEXT MANAGEMENT
-   ================================ */
-
-function getAudioContext(){
-  try{
-    if(!audioContext){
-      audioContext = new (window.AudioContext||window.webkitAudioContext)();
-    }
-    return audioContext;
-  }catch(e){
-    console.log('⚠ Audio context unavailable:', e.message);
-    return null;
-  }
-}
-
-function playBeep(freq=700, duration=120){
-  try{
-    const ctx = getAudioContext();
-    if(!ctx) return;
-    const o = ctx.createOscillator();
-    o.type='sine';
-    o.frequency.value=freq;
-    o.connect(ctx.destination);
-    o.start();
-    setTimeout(()=>o.stop(),duration);
-  }catch(e){
-    console.log('⚠ Beep error:', e);
-  }
-}
-
-function doVibrate(){
-  try{
-    if(navigator.vibrate) navigator.vibrate(140);
-  }catch(e){
-    console.log('⚠ Vibration not available');
-  }
-}
-
-function showLoading(show){
-  const loader = document.getElementById('loading-indicator');
-  if(loader) loader.classList.toggle('active', show);
-}
-
-/* ================================
-   QR PARSING LOGIC
-   ================================ */
-
+/* QR PARSING */
 function parseQrText(raw){
-  const text=String(raw).replace(/\r/g,'').trim();
-  if(!text) return {ok:false,reason:'empty'};
-  
-  const lines = text
-    .split(/\n|;/)
-    .map(s => s.replace(/[^\x20-\x7E]/g, '').trim())
-    .filter(s => s.length > 0);
-  
-  let charge=null,spec=null,bundleRef=null,bundleNo='';
-  
-  // Extract charge number (4-5 digit code starting with 4 or 5)
-  for(const t of lines){
-    if(/^\s*(4\d{6}|5\d{6})\s*$/.test(t)){
-      charge=t;
-      break;
-    }
-  }
-  
-  // Extract bundle reference from [CUKR...] format
-  for(const t of lines.slice().reverse()){
-    const m=t.match(/\[CUKR[^\]]*\]/i);
-    if(m){
-      bundleRef=m[0];
-      const m2=bundleRef.match(/\/(\d{1,})\]?$/);
-      if(m2) bundleNo=m2[1];
-      break;
-    }
-  }
-  
-  // Extract spec (cargo description)
-  for(const t of lines){
-    if(t===charge) continue;
-    if(/^\[.*\]$/.test(t)) continue;
-    if(/[A-Za-z0-9\-]/.test(t) && t.length>2){
-      spec=t;
-      break;
-    }
-  }
-  
-  if(!spec && lines.length>=2) spec=lines[1];
-  if(!charge || !bundleRef || !spec) return {ok:false,reason:'missing',charge,spec,bundleRef};
-  
-  return {ok:true,charge,spec:spec||'UNKNOWN',bundleRef,bundleNo};
+  var text=String(raw).replace(/\r/g,'').trim();if(!text)return{ok:false,reason:'empty'};
+  var lines=text.split(/\n|;/).map(s=>s.replace(/[^\x20-\x7E]/g,'').trim()).filter(s=>s.length>0);
+  var charge=null,spec=null,bundleRef=null,bundleNo='';
+  for(var t of lines){if(/^\s*(4\d{6}|5\d{6})\s*$/.test(t)){charge=t;break;}}
+  for(var t of lines.slice().reverse()){var m=t.match(/\[CUKR[^\]]*\]/i);if(m){bundleRef=m[0];var m2=bundleRef.match(/\/(\d{1,})\]?$/);if(m2)bundleNo=m2[1];break;}}
+  for(var t of lines){if(t===charge)continue;if(/^\[.*\]$/.test(t))continue;if(/[A-Za-z0-9\-]/.test(t)&&t.length>2){spec=t;break;}}
+  if(!spec&&lines.length>=2)spec=lines[1];
+  if(!charge||!bundleRef||!spec)return{ok:false,reason:'missing',charge,spec,bundleRef};
+  return{ok:true,charge,spec:spec||'UNKNOWN',bundleRef,bundleNo};
+}
+function addParsed(parsed,raw){
+  var{charge,spec,bundleRef,bundleNo}=parsed;
+  countsBySpec[spec]=countsBySpec[spec]||{};chargeOrderBySpec[spec]=chargeOrderBySpec[spec]||[];
+  if(!countsBySpec[spec][charge]){countsBySpec[spec][charge]=new Set();chargeOrderBySpec[spec].push(charge);}
+  var set=countsBySpec[spec][charge];var already=set.has(bundleRef);
+  if(!already){set.add(bundleRef);totalBundles++;recentScans.unshift({time:new Date(),charge,spec,bundleRef,bundleNo,status:'added',raw});playBeep(700,120);doVibrate();}
+  else{recentScans.unshift({time:new Date(),charge,spec,bundleRef,bundleNo,status:'duplicate',raw});playBeep(300,100);doVibrate();}
+  if(recentScans.length>80)recentScans.pop();refreshUI();
 }
 
-function addParsed(parsed, raw){
-  const {charge,spec,bundleRef,bundleNo}=parsed;
-  
-  countsBySpec[spec] = countsBySpec[spec] || {};
-  chargeOrderBySpec[spec] = chargeOrderBySpec[spec] || [];
-
-  if(!countsBySpec[spec][charge]){
-    countsBySpec[spec][charge] = new Set();
-    chargeOrderBySpec[spec].push(charge);
-  }
-  
-  const set=countsBySpec[spec][charge];
-  const already=set.has(bundleRef);
-  
-  if(!already){
-    set.add(bundleRef);
-    totalBundles++;
-    recentScans.unshift({time:new Date(),charge,spec,bundleRef,bundleNo,status:'added',raw});
-    playBeep(700, 120);
-    doVibrate();
-  } else {
-    recentScans.unshift({time:new Date(),charge,spec,bundleRef,bundleNo,status:'duplicate',raw});
-    playBeep(300, 100);
-    doVibrate();
-  }
-  
-  if(recentScans.length>80) recentScans.pop();
-  refreshUI();
-}
-
-/* ================================
-   UI REFRESH & DISPLAY
-   ================================ */
-
+/* UI REFRESH */
 function refreshUI(){
-  const grouped=document.getElementById('grouped');
-  grouped.innerHTML='';
-  
-  for(const spec of Object.keys(countsBySpec)){
-    const specDiv=document.createElement('div');
-    specDiv.className='spec';
-    specDiv.textContent=spec;
-    grouped.appendChild(specDiv);
-    
-    const charges=countsBySpec[spec];
-    for(const charge of (chargeOrderBySpec[spec] || [])){
-      const set=charges[charge];
-      const chargeRow=document.createElement('div');
-      chargeRow.className='chargeRow';
-      
-      const left=document.createElement('div');
-      left.innerHTML=`<div style="font-weight:700">${charge}</div><div class="muted">${set.size} bundle(s)</div>`;
-      
-      const right=document.createElement('div');
-      right.style.minWidth='120px';
-      right.innerHTML=Array.from(set).map(b=>`<div class="bundles">${b}</div>`).join('');
-      
-      chargeRow.appendChild(left);
-      chargeRow.appendChild(right);
-      grouped.appendChild(chargeRow);
+  var grouped=document.getElementById('grouped');grouped.innerHTML='';
+  for(var spec of Object.keys(countsBySpec)){
+    var specCard=document.createElement('div');specCard.className='dashboard-card';
+    specCard.innerHTML='<div class="dashboard-card-header"><span class="material-symbols-rounded dashboard-card-icon">inventory_2</span><span class="dashboard-card-title">'+spec+'</span></div>';
+    grouped.appendChild(specCard);
+    var charges=countsBySpec[spec];
+    for(var charge of(chargeOrderBySpec[spec]||[])){
+      var set=charges[charge];var chargeRow=document.createElement('div');chargeRow.className='charge-row';
+      var tags=Array.from(set).map(function(b){return'<span class="bundle-tag">'+b+'</span>';}).join('');
+      chargeRow.innerHTML='<div class="charge-row-info"><span class="charge-row-number">'+charge+'</span><span class="charge-row-count">'+set.size+' bundle'+(set.size>1?'s':'')+'</span></div><div class="charge-row-bundles">'+tags+'</div>';
+      specCard.appendChild(chargeRow);
     }
   }
-
-  const scansList=document.getElementById('scansList');
-  scansList.innerHTML='';
-  
-  for(const s of recentScans.slice(0,30)){
-    const el=document.createElement('div');
-    el.className='logItem';
-    const statusColor = s.status==='added' ? '#065f46' : s.status==='duplicate' ? '#92400e' : '#b91c1c';
-    const statusText = s.status==='added' ? 'Added' : s.status==='duplicate' ? 'Duplicate' : 'Invalid';
-    
-    el.innerHTML=`<div style="font-size:11px;color:#6b7280">${new Date(s.time).toLocaleTimeString()}</div><div>${s.charge} — ${s.spec}</div><div style="font-size:12px;margin-top:4px">${s.bundleRef} ${s.bundleNo?('(no:'+s.bundleNo+')'):''}</div><div style="margin-top:4px;font-size:11px;color:${statusColor}">${statusText}</div>`;
+  var scansList=document.getElementById('scansList');scansList.innerHTML='';
+  for(var s of recentScans.slice(0,30)){
+    var el=document.createElement('div');el.className='timeline-item';el.setAttribute('data-status',s.status);
+    var st=s.status==='added'?'Added':s.status==='duplicate'?'Duplicate':'Invalid';
+    var si=s.status==='added'?'check_circle':s.status==='duplicate'?'warning':'cancel';
+    el.innerHTML='<div class="timeline-item-bar"></div><div class="timeline-item-content"><div class="timeline-item-header"><span class="timeline-item-charge">'+s.charge+'</span><span class="status-chip status-chip--'+s.status+'"><span class="material-symbols-rounded">'+si+'</span>'+st+'</span></div><div class="timeline-item-spec">'+s.spec+'</div><div class="timeline-item-bundle">'+s.bundleRef+(s.bundleNo?(' (no: '+s.bundleNo+')'):'')+'</div><div class="timeline-item-time">'+new Date(s.time).toLocaleTimeString()+'</div></div>';
     scansList.appendChild(el);
   }
-  
   document.getElementById('totalCount').textContent=totalBundles;
   document.getElementById('totalCount2').textContent=totalBundles;
 }
-
-function resetAll(){
-  if(!confirm('Clear all counts and scans?')) return;
-  countsBySpec={};
-  chargeOrderBySpec={};
-  totalBundles=0;
-  recentScans=[];
-  refreshUI();
-}
-
+function resetAll(){if(!confirm('Clear all counts and scans?'))return;countsBySpec={};chargeOrderBySpec={};totalBundles=0;recentScans=[];refreshUI();}
 function exportCSV(){
-  let csv='Specification,ChargeNumber,BundleReference,BundleNo\n';
-  for(const spec of Object.keys(countsBySpec)){
-    const charges=countsBySpec[spec];
-    for(const charge of Object.keys(charges)){
-      for(const bundleRef of charges[charge]){
-        const m=bundleRef.match(/\/(\d+)\]?$/);
-        const bno=m?m[1]:'';
-        csv+=`"${spec}","${charge}","${bundleRef}","${bno}"\n`;
-      }
-    }
-  }
-  const blob=new Blob([csv],{type:'text/csv'});
-  const url=URL.createObjectURL(blob);
-  const a=document.createElement('a');
-  a.href=url;
-  a.download='bundle_counts.csv';
-  a.click();
-  URL.revokeObjectURL(url);
+  var csv='Specification,ChargeNumber,BundleReference,BundleNo\n';
+  for(var spec of Object.keys(countsBySpec)){var charges=countsBySpec[spec];for(var charge of Object.keys(charges)){for(var bundleRef of charges[charge]){var m=bundleRef.match(/\/(\d+)\]?$/);var bno=m?m[1]:'';csv+='"'+spec+'","'+charge+'","'+bundleRef+'","'+bno+'"\n';}}}
+  var blob=new Blob([csv],{type:'text/csv'});var url=URL.createObjectURL(blob);var a=document.createElement('a');a.href=url;a.download='bundle_counts.csv';a.click();URL.revokeObjectURL(url);
 }
-
-document.getElementById('btn-add-manual').addEventListener('click',()=>{
-  const raw=document.getElementById('manualQr').value;
-  if(!raw||!raw.trim()){
-    alert('Paste QR content first');
-    return;
-  }
-  const parsed=parseQrText(raw);
-  if(!parsed.ok){
-    alert('Could not parse QR content. Ensure charge and [CUKR...] present.');
-    return;
-  }
-  addParsed(parsed,raw);
-  document.getElementById('manualQr').value='';
-});
-
+document.getElementById('btn-add-manual').addEventListener('click',()=>{var raw=document.getElementById('manualQr').value;if(!raw||!raw.trim()){alert('Paste QR content first');return;}var parsed=parseQrText(raw);if(!parsed.ok){alert('Could not parse QR content.');return;}addParsed(parsed,raw);document.getElementById('manualQr').value='';});
 document.getElementById('btn-export-csv').addEventListener('click',exportCSV);
 document.getElementById('btn-reset').addEventListener('click',resetAll);
 
-/* ================================
-   CAMERA CONTROL
-   ================================ */
-
+/* CAMERA CONTROL */
 async function startCamera(){
-  if(scannerActive) return;
-  try{
-    showLoading(true);
-    
-    stream = await navigator.mediaDevices.getUserMedia({
-      video:{
-        facingMode:'environment',
-        width:{ideal:1920},
-        height:{ideal:1080}
-      }
-    });
-    
-    video.srcObject=stream;
-    video.style.display='block';
-    document.getElementById('no-camera').style.display='none';
-    
-    track = stream.getVideoTracks()[0];
-    const caps = track.getCapabilities();
-    
-    // Detect torch support
-    torchSupported = !!(caps && caps.torch);
-    updateTorchUI();
-    console.log('✓ Camera started. Torch support:', torchSupported);
-    
-    // Detect barcode decoder
-    let supported = [];
-    if(window.BarcodeDetector){
-      try{
-        const formats = await BarcodeDetector.getSupportedFormats();
-        supported = formats || [];
-      }catch(e){
-        console.log('⚠ BarcodeDetector unavailable');
-      }
-    }
-    
-    if(window.BarcodeDetector && supported.includes('qr_code')){
-      barcodeDetector = new BarcodeDetector({formats:['qr_code']});
-      useJsQr = false;
-      console.log('✓ Using BarcodeDetector API');
-    } else {
-      useJsQr = true;
-      canvas.width = 800;
-      canvas.height = 600;
-      console.log('✓ Using jsQR library');
-    }
-    
-    // Start detection loop
-    detectInterval = setInterval(async ()=>{
-      try{
-        if(barcodeDetector){
-          const barcodeResults = await barcodeDetector.detect(video);
-          if(barcodeResults?.length){
-            for(const br of barcodeResults){
-              handleDecodedText(String(br.rawValue));
-            }
-          }
-        } else if(useJsQr){
-          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-          const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-          const code = jsQR(imageData.data, imageData.width, imageData.height, {inversionAttempts: "attemptBoth"});
-          if(code){
-            handleDecodedText(code.data);
-          }
-        }
-      }catch(e){
-        console.log('⚠ Detection error:', e);
-      }
-    }, 80);
-    
+  if(scannerActive)return;try{showLoading(true);
+    stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment',width:{ideal:1920},height:{ideal:1080}}});
+    video.srcObject=stream;video.style.display='block';document.getElementById('no-camera').style.display='none';
+    track=stream.getVideoTracks()[0];var caps=track.getCapabilities();torchSupported=!!(caps&&caps.torch);updateTorchUI();
+    var supported=[];if(window.BarcodeDetector){try{var f=await BarcodeDetector.getSupportedFormats();supported=f||[];}catch(e){}}
+    if(window.BarcodeDetector&&supported.includes('qr_code')){barcodeDetector=new BarcodeDetector({formats:['qr_code']});useJsQr=false;}
+    else{useJsQr=true;canvas.width=800;canvas.height=600;}
+    detectInterval=setInterval(async()=>{try{if(barcodeDetector){var r=await barcodeDetector.detect(video);if(r?.length){for(var br of r)handleDecodedText(String(br.rawValue));}}else if(useJsQr){ctx.drawImage(video,0,0,canvas.width,canvas.height);var id=ctx.getImageData(0,0,canvas.width,canvas.height);var code=jsQR(id.data,id.width,id.height,{inversionAttempts:"attemptBoth"});if(code)handleDecodedText(code.data);}}catch(e){}},80);
     scannerActive=true;
-    document.getElementById('btn-start').style.display='none';
-    document.getElementById('btn-stop').style.display='inline-flex';
-    showLoading(false);
-  }catch(e){
-    showLoading(false);
-    const msg = e.name === 'NotAllowedError' ? 'Camera access denied. Please allow in browser settings.' :
-                e.name === 'NotFoundError' ? 'No camera found on this device.' :
-                'Camera error: ' + e.message;
-    alert(msg);
-    stopCamera();
-  }
+    var ss=document.getElementById('scanner-status');if(ss){ss.className='scanner-status scanner-status--active';ss.querySelector('.scanner-status-text').textContent='Scanning Active';ss.querySelector('.status-dot').className='status-dot status-dot--active';}
+    document.getElementById('btn-start').style.display='none';document.getElementById('btn-stop').style.display='inline-flex';showLoading(false);
+  }catch(e){showLoading(false);var msg=e.name==='NotAllowedError'?'Camera access denied.':e.name==='NotFoundError'?'No camera found.':'Camera error: '+e.message;alert(msg);stopCamera();}
 }
-
 function stopCamera(){
-  if(!scannerActive) return;
-  
-  if(detectInterval){
-    clearInterval(detectInterval);
-    detectInterval=null;
-  }
-  
-  if(stream){
-    stream.getTracks().forEach(t=>t.stop());
-    stream=null;
-    track=null;
-  }
-  
-  video.pause();
-  video.srcObject=null;
-  video.style.display='none';
-  document.getElementById('no-camera').style.display='block';
-  
-  torchOn = false;
-  torchSupported = false;
-  updateTorchUI();
-  
-  scannerActive=false;
-  document.getElementById('btn-start').style.display='inline-flex';
-  document.getElementById('btn-stop').style.display='none';
+  if(!scannerActive)return;
+  if(detectInterval){clearInterval(detectInterval);detectInterval=null;}
+  if(stream){stream.getTracks().forEach(t=>t.stop());stream=null;track=null;}
+  video.pause();video.srcObject=null;video.style.display='none';document.getElementById('no-camera').style.display='block';
+  torchOn=false;torchSupported=false;updateTorchUI();scannerActive=false;
+  var ss=document.getElementById('scanner-status');if(ss){ss.className='scanner-status';ss.querySelector('.scanner-status-text').textContent='Camera Off';ss.querySelector('.status-dot').className='status-dot status-dot--off';}
+  document.getElementById('btn-start').style.display='inline-flex';document.getElementById('btn-stop').style.display='none';
 }
-
 async function handleDecodedText(decodedText){
-  if(!decodedText || isProcessing) return;
-  
-  isProcessing = true;
-  
-  try{
-    const recent = recentScans[0];
-    if(recent && recent.raw === decodedText && (new Date() - new Date(recent.time)) < 700){
-      isProcessing = false;
-      return;
-    }
-    
-    const parsed = parseQrText(decodedText);
-    
-    if(parsed.ok && parsed.charge && parsed.spec && parsed.bundleRef){
-      addParsed(parsed, decodedText);
-    } else {
-      recentScans.unshift({
-        time: new Date(),
-        charge: parsed.charge || '?',
-        spec: parsed.spec || '?',
-        bundleRef: parsed.bundleRef || '?',
-        bundleNo: parsed.bundleNo || '',
-        status: 'invalid',
-        raw: decodedText
-      });
-      
-      playBeep(250, 120);
-      doVibrate();
-      refreshUI();
-    }
-  }finally{
-    isProcessing = false;
-  }
+  if(!decodedText||isProcessing)return;isProcessing=true;
+  try{var recent=recentScans[0];if(recent&&recent.raw===decodedText&&(new Date()-new Date(recent.time))<700){isProcessing=false;return;}
+    var parsed=parseQrText(decodedText);
+    if(parsed.ok&&parsed.charge&&parsed.spec&&parsed.bundleRef){addParsed(parsed,decodedText);}
+    else{recentScans.unshift({time:new Date(),charge:parsed.charge||'?',spec:parsed.spec||'?',bundleRef:parsed.bundleRef||'?',bundleNo:parsed.bundleNo||'',status:'invalid',raw:decodedText});playBeep(250,120);doVibrate();refreshUI();}
+  }finally{isProcessing=false;}
 }
-
 document.getElementById('btn-start').addEventListener('click',startCamera);
 document.getElementById('btn-stop').addEventListener('click',stopCamera);
 
-/* ================================
-   PAGE NAVIGATION
-   ================================ */
-
-function showPage(id){
-  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
-  const el=document.getElementById(id);
-  if(el) el.classList.add('active');
-}
-
-document.getElementById('opt-loading').addEventListener('click',()=>{
-  fillDateTimeInputs();
-  showPage('page-loading');
-});
-
-document.getElementById('opt-scan-only').addEventListener('click',()=>{
-  showPage('page-scanner');
-});
-
-document.getElementById('open-history').addEventListener('click',()=>{
-  renderHistory();
-  showPage('page-history');
-});
-
+/* PAGE NAVIGATION */
+function showPage(id){document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));var el=document.getElementById(id);if(el)el.classList.add('active');}
+document.getElementById('opt-loading').addEventListener('click',()=>{fillDateTimeInputs();showPage('page-loading');});
+document.getElementById('opt-scan-only').addEventListener('click',()=>{showPage('page-scanner');});
+document.getElementById('open-history').addEventListener('click',()=>{renderHistory();showPage('page-history');});
 document.getElementById('back-to-start').addEventListener('click',()=>showPage('page-start'));
-document.getElementById('back-to-start-2').addEventListener('click',()=>{
-  stopCamera();
-  showPage('page-start');
-});
+document.getElementById('back-to-start-2').addEventListener('click',()=>{stopCamera();showPage('page-start');});
 document.getElementById('back-from-history').addEventListener('click',()=>showPage('page-start'));
 
-/* ================================
-   FORM LOGIC
-   ================================ */
-
-function fillDateTimeInputs(){
-  const now=new Date();
-  document.getElementById('input-date').value = now.toLocaleDateString();
-  document.getElementById('input-time').value = now.toLocaleTimeString();
-  updateFormPreview();
-}
-
+/* FORM LOGIC */
+function fillDateTimeInputs(){var now=new Date();document.getElementById('input-date').value=now.toLocaleDateString();document.getElementById('input-time').value=now.toLocaleTimeString();updateFormPreview();}
 function updateFormPreview(){
-  const dv=document.getElementById('input-delivery').value||'___';
-  const vn=document.getElementById('input-vehicle-no').value||'___';
-  const reg=document.getElementById('input-country').value||'___';
-  const dr=document.getElementById('input-driver').value||'___';
-  const br=document.getElementById('input-bundle-ref').value||'___';
-  const date=document.getElementById('input-date').value;
-  const time=document.getElementById('input-time').value;
-  
-  document.getElementById('form-preview').innerHTML = `
-    <div style="font-weight:700">Cargo Loading</div>
-    <div class="small-muted">Date: ${date} &nbsp;&nbsp; Time: ${time}</div>
-    <hr style="margin:8px 0;border:none;border-top:1px solid #e5e7eb" />
-    <div><strong>Delivery No:</strong> ${dv}</div>
-    <div style="margin-top:6px"><strong>Vehicle No:</strong> ${vn}</div>
-    <div style="margin-top:6px"><strong>Region:</strong> ${reg} <span id="previewFlag" class="flag-box"></span></div>
-    <div style="margin-top:6px"><strong>Driver:</strong> ${dr}</div>
-    <div style="margin-top:6px"><strong>Bundle Ref:</strong> ${br}</div>
-    <hr style="margin-top:10px;border:none;border-top:1px solid #e5e7eb" />
-    <div class="small-muted">Loaded cargo summary will appear after scanning.</div>
-  `;
-  document.getElementById('previewFlag').textContent = document.getElementById('auto-flag').textContent || '';
+  var dv=document.getElementById('input-delivery').value||'___',vn=document.getElementById('input-vehicle-no').value||'___',reg=document.getElementById('input-country').value||'___',dr=document.getElementById('input-driver').value||'___',br=document.getElementById('input-bundle-ref').value||'___',date=document.getElementById('input-date').value,time=document.getElementById('input-time').value;
+  document.getElementById('form-preview').innerHTML='<div class="preview-section-title">Cargo Loading</div><div class="preview-meta">'+date+' &nbsp;&nbsp; '+time+'</div><div class="preview-divider"></div><div class="preview-row"><span class="preview-label">Delivery No:</span> <span class="preview-value">'+dv+'</span></div><div class="preview-row"><span class="preview-label">Vehicle No:</span> <span class="preview-value">'+vn+'</span></div><div class="preview-row"><span class="preview-label">Region:</span> <span class="preview-value">'+reg+' <span id="previewFlag" class="flag-box"></span></span></div><div class="preview-row"><span class="preview-label">Driver:</span> <span class="preview-value">'+dr+'</span></div><div class="preview-row"><span class="preview-label">Bundle Ref:</span> <span class="preview-value">'+br+'</span></div><div class="preview-divider"></div><div class="preview-hint">Loaded cargo summary will appear after scanning.</div>';
+  document.getElementById('previewFlag').textContent=document.getElementById('auto-flag').textContent||'';
 }
-
 document.getElementById('input-delivery').addEventListener('input',updateFormPreview);
 document.getElementById('input-vehicle-no').addEventListener('input',updateFormPreview);
-document.getElementById('input-country').addEventListener('input',()=>{
-  updateFlagFromCountryInput();
-  updateFormPreview();
-});
+document.getElementById('input-country').addEventListener('input',()=>{updateFlagFromCountryInput();updateFormPreview();});
 document.getElementById('input-driver').addEventListener('input',updateFormPreview);
 document.getElementById('input-bundle-ref').addEventListener('input',updateFormPreview);
-
-document.getElementById('proceed-to-scan').addEventListener('click',()=>{
-  const delivery = document.getElementById('input-delivery').value.trim();
-  const vehicleNo = document.getElementById('input-vehicle-no').value.trim();
-  
-  if(!delivery || !vehicleNo){
-    alert('Delivery No. and Vehicle No. are required.');
-    return;
-  }
-  
-  showPage('page-scanner');
-  currentForm = readForm();
-  updateFormPreview();
-});
-
-function readForm(){
-  return {
-    delivery: document.getElementById('input-delivery').value || '',
-    vehicleNo: document.getElementById('input-vehicle-no').value || '',
-    region: document.getElementById('input-country').value || '',
-    flag: document.getElementById('auto-flag').textContent || '',
-    driver: document.getElementById('input-driver').value || '',
-    bundleRef: document.getElementById('input-bundle-ref').value || '',
-    date: document.getElementById('input-date').value,
-    time: document.getElementById('input-time').value,
-    summaryCounts: JSON.parse(serializeCounts())
-  };
-}
-
-document.getElementById('save-form').addEventListener('click',()=>{
-  const delivery = document.getElementById('input-delivery').value.trim();
-  const vehicleNo = document.getElementById('input-vehicle-no').value.trim();
-  
-  if(!delivery || !vehicleNo){
-    alert('Delivery No. and Vehicle No. are required.');
-    return;
-  }
-  
-  const f=readForm();
-  saveHistoryRecord({meta:f, created:new Date().toISOString()});
-  alert('Form saved into History.');
-});
-
-function serializeCounts(){
-  const out={};
-  for(const s of Object.keys(countsBySpec)){
-    out[s]={};
-    for(const c of Object.keys(countsBySpec[s])){
-      out[s][c]=Array.from(countsBySpec[s][c]);
-    }
-  }
-  return JSON.stringify(out);
-}
-
-function restoreCountsFromSnapshot(snapshot){
-  countsBySpec={};
-  chargeOrderBySpec={};
-  
-  for(const s of Object.keys(snapshot||{})){
-    countsBySpec[s]={};
-    for(const c of Object.keys(snapshot[s])){
-      countsBySpec[s][c]= new Set(snapshot[s][c]);
-    }
-    chargeOrderBySpec[s] = Object.keys(snapshot[s]);
-  }
-  
-  totalBundles=0;
-  for(const s of Object.keys(countsBySpec)){
-    for(const c of Object.keys(countsBySpec[s])){
-      totalBundles += countsBySpec[s][c].size;
-    }
-  }
-  
-  refreshUI();
-}
-
-/* ================================
-   ENHANCED PRINT OUTPUT
-   ================================ */
-
-let currentForm = null;
-
-/**
- * Build cargo summary with grouped bundle references
- * Format:
- * CARGO_DESCRIPTION
- * MATERIAL_NUMBER          BUNDLE_COUNT
- *                         [BUNDLE_REF_1]
- *                         [BUNDLE_REF_2]
- */
+document.getElementById('proceed-to-scan').addEventListener('click',()=>{var d=document.getElementById('input-delivery').value.trim(),v=document.getElementById('input-vehicle-no').value.trim();if(!d||!v){alert('Delivery No. and Vehicle No. are required.');return;}showPage('page-scanner');currentForm=readForm();updateFormPreview();});
+function readForm(){return{delivery:document.getElementById('input-delivery').value||'',vehicleNo:document.getElementById('input-vehicle-no').value||'',region:document.getElementById('input-country').value||'',flag:document.getElementById('auto-flag').textContent||'',driver:document.getElementById('input-driver').value||'',bundleRef:document.getElementById('input-bundle-ref').value||'',date:document.getElementById('input-date').value,time:document.getElementById('input-time').value,summaryCounts:JSON.parse(serializeCounts())};}
+document.getElementById('save-form').addEventListener('click',()=>{var d=document.getElementById('input-delivery').value.trim(),v=document.getElementById('input-vehicle-no').value.trim();if(!d||!v){alert('Delivery No. and Vehicle No. are required.');return;}var f=readForm();saveHistoryRecord({meta:f,created:new Date().toISOString()});alert('Form saved into History.');});
+function serializeCounts(){var out={};for(var s of Object.keys(countsBySpec)){out[s]={};for(var c of Object.keys(countsBySpec[s])){out[s][c]=Array.from(countsBySpec[s][c]);}}return JSON.stringify(out);}
+function restoreCountsFromSnapshot(snapshot){countsBySpec={};chargeOrderBySpec={};for(var s of Object.keys(snapshot||{})){countsBySpec[s]={};for(var c of Object.keys(snapshot[s])){countsBySpec[s][c]=new Set(snapshot[s][c]);}chargeOrderBySpec[s]=Object.keys(snapshot[s]);}totalBundles=0;for(var s of Object.keys(countsBySpec)){for(var c of Object.keys(countsBySpec[s])){totalBundles+=countsBySpec[s][c].size;}}refreshUI();}
+/* PRINT OUTPUT */
+let currentForm=null;
 function buildCargoSummary(){
-  let summaryHtml = '';
-  
-  for(const spec of Object.keys(countsBySpec)){
-    summaryHtml += `<div class="cargo-header">${spec}</div>`;
-    
-    const charges=countsBySpec[spec];
-    for(const charge of (chargeOrderBySpec[spec] || [])){
-      const bundleSet=charges[charge];
-      const bundleCount=bundleSet.size;
-      
-      // Sort bundle references for consistent output
-      const sortedBundles = Array.from(bundleSet).sort();
-      
-      // Cargo detail row with material number and bundle count
-      summaryHtml += `
-        <div class="cargo-detail">
-          <div class="cargo-detail-code">${charge}</div>
-          <div class="cargo-detail-count">${bundleCount} bundle${bundleCount > 1 ? 's' : ''}</div>
-        </div>
-      `;
-      
-      // Bundle reference lines
-      summaryHtml += '<div class="bundle-refs">';
-      for(const bundleRef of sortedBundles){
-        summaryHtml += `<div class="bundle-ref-line">${bundleRef}</div>`;
-      }
-      summaryHtml += '</div>';
+  var html='';
+  for(var spec of Object.keys(countsBySpec)){
+    html+='<div class="cargo-header">'+spec+'</div>';
+    var charges=countsBySpec[spec];
+    for(var charge of(chargeOrderBySpec[spec]||[])){
+      var set=charges[charge];var bc=set.size;var sorted=Array.from(set).sort();
+      html+='<div class="cargo-detail"><div class="cargo-detail-code">'+charge+'</div><div class="cargo-detail-count">'+bc+' bundle'+(bc>1?'s':'')+'</div></div>';
+      html+='<div class="bundle-refs">';for(var b of sorted){html+='<div class="bundle-ref-line">'+b+'</div>';}html+='</div>';
     }
   }
-  
-  if(!summaryHtml){
-    summaryHtml = '<div style="color:#666;font-style:italic">No bundles scanned</div>';
-  }
-  
-  return summaryHtml;
+  if(!html)html='<div class="print-empty">No bundles scanned</div>';
+  return html;
 }
-
 function buildPreviewContent(){
-  const meta = currentForm || {
-    delivery:'',vehicleNo:'',region:'',flag:'',driver:'',bundleRef:'',
-    date:new Date().toLocaleDateString(),
-    time:new Date().toLocaleTimeString()
-  };
-  
-  const created = meta.date || new Date().toLocaleDateString();
-  const time = meta.time || new Date().toLocaleTimeString();
-  const cargoSummaryHtml = buildCargoSummary();
-
-  return `
-    <div class="print-layout">
-      <div class="print-header">
-        CARGO LOADING SUMMARY
-      </div>
-
-      <div class="print-section">
-        <div class="print-section-title">SHIPMENT DETAILS</div>
-        <div style="font-size:12px;margin-bottom:8px">
-          <div style="margin:2px 0"><strong>Delivery:</strong> ${meta.delivery || 'N/A'}</div>
-          <div style="margin:2px 0"><strong>Vehicle:</strong> ${meta.vehicleNo || 'N/A'} ${meta.flag ? meta.flag : ''}</div>
-          <div style="margin:2px 0"><strong>Region:</strong> ${meta.region || 'N/A'}</div>
-          <div style="margin:2px 0"><strong>Driver:</strong> ${meta.driver || 'N/A'}</div>
-          <div style="margin:2px 0"><strong>Bundle Ref:</strong> ${meta.bundleRef || 'N/A'}</div>
-          <div style="margin:2px 0"><strong>Date/Time:</strong> ${created} ${time}</div>
-        </div>
-      </div>
-
-      <div class="print-section">
-        <div class="print-section-title">CARGO SUMMARY</div>
-        ${cargoSummaryHtml}
-        <div class="print-total">
-          TOTAL BUNDLE:-  ${totalBundles}
-        </div>
-      </div>
-
-      <div class="print-footer">
-        Generated on ${new Date().toLocaleString()} | Offline Bundle QR Scanner
-      </div>
-    </div>
-  `;
+  var meta=currentForm||{delivery:'',vehicleNo:'',region:'',flag:'',driver:'',bundleRef:'',date:new Date().toLocaleDateString(),time:new Date().toLocaleTimeString()};
+  var created=meta.date||new Date().toLocaleDateString(),time=meta.time||new Date().toLocaleTimeString();
+  return'<div class="print-layout"><div class="print-header"><div class="print-header-icon"><span class="material-symbols-rounded">description</span></div><div class="print-header-text">CARGO LOADING SUMMARY</div></div><div class="print-section"><div class="print-section-title">Shipment Details</div><div class="print-details"><div class="print-detail-row"><span class="print-detail-label">Delivery:</span> <span class="print-detail-value">'+(meta.delivery||'N/A')+'</span></div><div class="print-detail-row"><span class="print-detail-label">Vehicle:</span> <span class="print-detail-value">'+(meta.vehicleNo||'N/A')+' '+(meta.flag?meta.flag:'')+'</span></div><div class="print-detail-row"><span class="print-detail-label">Region:</span> <span class="print-detail-value">'+(meta.region||'N/A')+'</span></div><div class="print-detail-row"><span class="print-detail-label">Driver:</span> <span class="print-detail-value">'+(meta.driver||'N/A')+'</span></div><div class="print-detail-row"><span class="print-detail-label">Bundle Ref:</span> <span class="print-detail-value">'+(meta.bundleRef||'N/A')+'</span></div><div class="print-detail-row"><span class="print-detail-label">Date/Time:</span> <span class="print-detail-value">'+created+' '+time+'</span></div></div></div><div class="print-section"><div class="print-section-title">Cargo Summary</div>'+buildCargoSummary()+'<div class="print-total">TOTAL BUNDLE: '+totalBundles+'</div></div><div class="print-footer">Generated on '+new Date().toLocaleString()+' | Bundle Scanner</div></div>';
 }
-
-document.getElementById('open-preview').addEventListener('click',()=>{
-  if(!currentForm){
-    currentForm = {
-      delivery:'',vehicleNo:'',region:'',flag:'',driver:'',bundleRef:'',
-      date:new Date().toLocaleDateString(),
-      time:new Date().toLocaleTimeString()
-    };
-  }
-  document.getElementById('previewContent').innerHTML = buildPreviewContent();
-  document.getElementById('previewModal').classList.add('active');
-});
-
-document.getElementById('closePreview').addEventListener('click',()=>{
-  document.getElementById('previewModal').classList.remove('active');
-});
-
+document.getElementById('open-preview').addEventListener('click',()=>{if(!currentForm)currentForm={delivery:'',vehicleNo:'',region:'',flag:'',driver:'',bundleRef:'',date:new Date().toLocaleDateString(),time:new Date().toLocaleTimeString()};document.getElementById('previewContent').innerHTML=buildPreviewContent();document.getElementById('previewModal').classList.add('active');});
+document.getElementById('closePreview').addEventListener('click',()=>{document.getElementById('previewModal').classList.remove('active');});
 document.getElementById('doPrint').addEventListener('click',()=>{
-  const win = window.open('','_blank');
-  if(!win){
-    alert('Pop-up blocked. Please allow pop-ups for this site.');
-    return;
-  }
-  
-  win.document.write(`
-    <html>
-      <head>
-        <title>Cargo Loading Summary</title>
-        <style>
-          body { 
-            font-family: 'Courier New', monospace; 
-            padding: 16px; 
-            line-height: 1.4;
-            background: #fff;
-          }
-          .print-layout { 
-            max-width: 800px; 
-            margin: 0 auto;
-            color: #000;
-          }
-          .print-header {
-            border-bottom: 2px solid #000;
-            padding-bottom: 12px;
-            margin-bottom: 12px;
-            text-align: center;
-            font-weight: 700;
-            font-size: 14px;
-          }
-          .print-section {
-            margin-bottom: 12px;
-          }
-          .print-section-title {
-            font-weight: 700;
-            font-size: 13px;
-            margin-bottom: 8px;
-            border-bottom: 1px dashed #000;
-            padding-bottom: 4px;
-          }
-          .cargo-header {
-            font-weight: 700;
-            font-size: 12px;
-            margin-bottom: 4px;
-          }
-          .cargo-detail {
-            display: flex;
-            justify-content: space-between;
-            font-size: 12px;
-            padding-left: 2em;
-            margin-bottom: 2px;
-          }
-          .cargo-detail-count {
-            text-align: right;
-            min-width: 120px;
-          }
-          .bundle-refs {
-            padding-left: 3em;
-            margin-top: 2px;
-            margin-bottom: 8px;
-          }
-          .bundle-ref-line {
-            font-family: 'Courier New', monospace;
-            font-size: 11px;
-            margin: 1px 0;
-          }
-          .print-total {
-            border-top: 2px solid #000;
-            border-bottom: 2px solid #000;
-            padding: 6px 0;
-            text-align: right;
-            font-weight: 700;
-            font-size: 12px;
-            margin-top: 10px;
-          }
-          .print-footer {
-            text-align: center;
-            color: #333;
-            font-size: 10px;
-            margin-top: 12px;
-            border-top: 1px solid #ccc;
-            padding-top: 8px;
-          }
-        </style>
-      </head>
-      <body>
-        ${document.getElementById('previewContent').innerHTML}
-      </body>
-    </html>
-  `);
-  win.document.close();
-  win.focus();
-  setTimeout(()=>{ win.print(); }, 300);
+  var win=window.open('','_blank');if(!win){alert('Pop-up blocked. Please allow pop-ups for this site.');return;}
+  win.document.write('<html><head><title>Cargo Loading Summary</title><style>body{font-family:\'Courier New\',monospace;padding:16px;line-height:1.4;background:#fff;}.print-layout{max-width:800px;margin:0 auto;color:#000;}.print-header{border-bottom:2px solid #000;padding-bottom:12px;margin-bottom:12px;text-align:center;font-weight:700;font-size:14px;}.print-header-icon{display:none;}.print-section{margin-bottom:12px;}.print-section-title{font-weight:700;font-size:13px;margin-bottom:8px;border-bottom:1px dashed #000;padding-bottom:4px;}.print-details{background:none;padding:0;}.cargo-header{font-weight:700;font-size:12px;margin-bottom:4px;}.cargo-detail{display:flex;justify-content:space-between;font-size:12px;padding-left:2em;margin-bottom:2px;}.cargo-detail-count{text-align:right;min-width:120px;}.bundle-refs{padding-left:3em;margin-top:2px;margin-bottom:8px;}.bundle-ref-line{font-family:\'Courier New\',monospace;font-size:11px;margin:1px 0;}.print-total{border-top:2px solid #000;border-bottom:2px solid #000;padding:6px 0;text-align:right;font-weight:700;font-size:12px;margin-top:10px;}.print-footer{text-align:center;color:#333;font-size:10px;margin-top:12px;border-top:1px solid #ccc;padding-top:8px;}</style></head><body>'+document.getElementById('previewContent').innerHTML+'</body></html>');
+  win.document.close();win.focus();setTimeout(()=>{win.print();},300);
 });
+document.getElementById('doSend').addEventListener('click',()=>{alert('Record "sent" (simulation).');});
+document.getElementById('save-record').addEventListener('click',()=>{if(!currentForm)currentForm={delivery:'',vehicleNo:'',region:'',flag:'',driver:'',bundleRef:'',date:new Date().toLocaleDateString(),time:new Date().toLocaleTimeString()};var snapshot=JSON.parse(serializeCounts());var rec={meta:currentForm,summary:snapshot,created:new Date().toISOString(),totalBundles};saveHistoryRecord(rec);alert('Record saved to History.');});
 
-document.getElementById('doSend').addEventListener('click',()=>{
-  alert('Record "sent" (simulation). Implement actual send logic as needed.');
-});
-
-document.getElementById('save-record').addEventListener('click',()=>{
-  if(!currentForm){
-    currentForm = {
-      delivery:'',vehicleNo:'',region:'',flag:'',driver:'',bundleRef:'',
-      date:new Date().toLocaleDateString(),
-      time:new Date().toLocaleTimeString()
-    };
-  }
-  const snapshot = JSON.parse(serializeCounts());
-  const rec = {meta:currentForm, summary:snapshot, created:new Date().toISOString(), totalBundles};
-  saveHistoryRecord(rec);
-  alert('Record saved to History.');
-});
-
-/* ================================
-   HISTORY MANAGEMENT
-   ================================ */
-
-const HISTORY_KEY = 'bundleHistory_v1';
-
-function loadHistory(){
-  try{
-    const raw=localStorage.getItem(HISTORY_KEY);
-    return raw?JSON.parse(raw):[];
-  }catch(e){
-    return [];
-  }
-}
-
-function saveHistoryList(list){
-  try{
-    localStorage.setItem(HISTORY_KEY, JSON.stringify(list));
-  }catch(e){
-    alert('Storage quota exceeded. Consider deleting old records.');
-  }
-}
-
-function saveHistoryRecord(rec){
-  const list = loadHistory();
-  list.unshift(rec);
-  
-  if(list.length > 300){
-    if(!confirm('You have 300+ history records. Delete oldest 100?')){
-      list.shift();
-      return;
-    }
-    list.splice(300);
-  }
-  
-  saveHistoryList(list);
-  renderHistory();
-}
-
-let historySelectedIndex = null;
-
+/* HISTORY MANAGEMENT */
+const HISTORY_KEY='bundleHistory_v1';
+function loadHistory(){try{var raw=localStorage.getItem(HISTORY_KEY);return raw?JSON.parse(raw):[];}catch(e){return[];}}
+function saveHistoryList(list){try{localStorage.setItem(HISTORY_KEY,JSON.stringify(list));}catch(e){alert('Storage quota exceeded.');}}
+function saveHistoryRecord(rec){var list=loadHistory();list.unshift(rec);if(list.length>300){if(!confirm('You have 300+ history records. Delete oldest 100?')){list.shift();return;}list.splice(300);}saveHistoryList(list);renderHistory();}
+let historySelectedIndex=null;
 function renderHistory(){
-  const list = loadHistory();
-  const out = document.getElementById('historyList');
-  out.innerHTML='';
-  
-  if(list.length===0){
-    out.innerHTML='<div class="small-muted">No history yet.</div>';
-  } else {
-    list.forEach((r,idx)=>{
-      const div=document.createElement('div');
-      div.className='historyItem';
-      div.setAttribute('role','listitem');
-      
-      const left=document.createElement('div');
-      left.style.flex='1';
-      const title = r.meta && r.meta.delivery ? `${r.meta.delivery} — ${r.meta.vehicleNo||'no vehicle'}` : `Record ${new Date(r.created).toLocaleString()}`;
-      left.innerHTML = `<div style="font-weight:700">${title}</div><div class="small-muted">${new Date(r.created).toLocaleString()}</div>`;
-      
-      const right=document.createElement('div');
-      const btnSel=document.createElement('button');
-      btnSel.textContent='Select';
-      btnSel.className='small';
-      btnSel.setAttribute('aria-label', `Select history record ${title}`);
-      btnSel.addEventListener('click',()=>{ selectHistory(idx); });
-      
-      right.appendChild(btnSel);
-      div.appendChild(left);
-      div.appendChild(right);
-      out.appendChild(div);
-    });
-  }
-  
-  document.getElementById('historySelected').innerHTML = '<div class="small-muted">Select a record to view details</div>';
+  var list=loadHistory();var out=document.getElementById('historyList');out.innerHTML='';
+  if(list.length===0){out.innerHTML='<div class="empty-state"><span class="material-symbols-rounded">inbox</span><span>No history yet.</span></div>';}
+  else{list.forEach((r,idx)=>{
+    var div=document.createElement('div');div.className='history-card';div.setAttribute('role','listitem');
+    var title=r.meta&&r.meta.delivery?r.meta.delivery+' \u2014 '+(r.meta.vehicleNo||'no vehicle'):'Record '+new Date(r.created).toLocaleString();
+    var icon=document.createElement('div');icon.className='history-card-icon';icon.innerHTML='<span class="material-symbols-rounded">description</span>';
+    var content=document.createElement('div');content.className='history-card-content';content.innerHTML='<div class="history-card-title">'+title+'</div><div class="history-card-meta"><span class="material-symbols-rounded">schedule</span> '+new Date(r.created).toLocaleString()+'</div>';
+    var btnSel=document.createElement('button');btnSel.textContent='Select';btnSel.className='btn btn-secondary btn-sm';btnSel.setAttribute('aria-label','Select history record '+title);btnSel.addEventListener('click',function(){selectHistory(idx);});
+    div.appendChild(icon);div.appendChild(content);div.appendChild(btnSel);out.appendChild(div);
+  });}
+  document.getElementById('historySelected').innerHTML='<div class="empty-state empty-state--compact"><span class="material-symbols-rounded">touch_app</span><span>Select a record to view details</span></div>';
 }
-
 function selectHistory(idx){
-  historySelectedIndex = idx;
-  const list = loadHistory();
-  const r = list[idx];
-  if(!r) return;
-  
-  const el = document.getElementById('historySelected');
-  const meta = r.meta || {};
-  
-  let summaryHtml='';
-  if(r.summary){
-    for(const spec of Object.keys(r.summary)){
-      summaryHtml += `<div style="font-weight:700;margin-top:8px">${spec}</div>`;
-      for(const c of Object.keys(r.summary[spec])){
-        summaryHtml += `<div style="display:flex;justify-content:space-between;padding:4px 0"><div>${c}</div><div>${r.summary[spec][c].length} bundles</div></div>`;
-      }
-    }
-  } else {
-    summaryHtml = '<div class="small-muted">No summary</div>';
-  }
-  
-  el.innerHTML = `
-    <div><strong>Delivery:</strong> ${meta.delivery||'N/A'}</div>
-    <div><strong>Vehicle:</strong> ${meta.vehicleNo||'N/A'} ${meta.flag?meta.flag:''}</div>
-    <div style="margin-top:8px"><strong>Bundle Ref:</strong> ${meta.bundleRef||'N/A'}</div>
-    <div style="margin-top:8px"><strong>Driver:</strong> ${meta.driver||'N/A'}</div>
-    <div style="margin-top:8px"><strong>When:</strong> ${new Date(r.created).toLocaleString()}</div>
-    <hr style="border:none;border-top:1px solid #e5e7eb;margin:8px 0" />
-    ${summaryHtml}
-  `;
+  historySelectedIndex=idx;var list=loadHistory();var r=list[idx];if(!r)return;
+  var el=document.getElementById('historySelected');var meta=r.meta||{};
+  var summaryHtml='';
+  if(r.summary){for(var spec of Object.keys(r.summary)){summaryHtml+='<div class="detail-spec-header">'+spec+'</div>';for(var c of Object.keys(r.summary[spec])){summaryHtml+='<div class="detail-charge-row"><span>'+c+'</span><span class="detail-charge-count">'+r.summary[spec][c].length+' bundles</span></div>';}}}
+  else{summaryHtml='<div class="empty-state empty-state--compact">No summary</div>';}
+  el.innerHTML='<div class="detail-row"><span class="detail-label">Delivery:</span> <span class="detail-value">'+(meta.delivery||'N/A')+'</span></div><div class="detail-row"><span class="detail-label">Vehicle:</span> <span class="detail-value">'+(meta.vehicleNo||'N/A')+' '+(meta.flag?meta.flag:'')+'</span></div><div class="detail-row"><span class="detail-label">Bundle Ref:</span> <span class="detail-value">'+(meta.bundleRef||'N/A')+'</span></div><div class="detail-row"><span class="detail-label">Driver:</span> <span class="detail-value">'+(meta.driver||'N/A')+'</span></div><div class="detail-row"><span class="detail-label">When:</span> <span class="detail-value">'+new Date(r.created).toLocaleString()+'</span></div><div class="detail-divider"></div>'+summaryHtml;
 }
-
-document.getElementById('history-delete').addEventListener('click',()=>{
-  if(historySelectedIndex===null) return alert('Select a record first.');
-  if(!confirm('Delete selected history record?')) return;
-  
-  const list = loadHistory();
-  list.splice(historySelectedIndex,1);
-  saveHistoryList(list);
-  historySelectedIndex = null;
-  renderHistory();
-});
-
-document.getElementById('history-reopen').addEventListener('click',()=>{
-  if(historySelectedIndex===null) return alert('Select a record first.');
-  
-  const list = loadHistory();
-  const r = list[historySelectedIndex];
-  
-  if(r){
-    restoreCountsFromSnapshot(r.summary || {});
-    currentForm = r.meta || {};
-    
-    if(currentForm){
-      document.getElementById('input-delivery').value = currentForm.delivery || '';
-      document.getElementById('input-vehicle-no').value = currentForm.vehicleNo || '';
-      document.getElementById('input-country').value = currentForm.region || '';
-      document.getElementById('input-driver').value = currentForm.driver || '';
-      document.getElementById('input-bundle-ref').value = currentForm.bundleRef || '';
-      document.getElementById('auto-flag').textContent = currentForm.flag || '';
-      fillDateTimeInputs();
-      updateFormPreview();
-    }
-    
-    showPage('page-scanner');
-  }
-});
-
-document.getElementById('del-all-history').addEventListener('click',()=>{
-  if(!confirm('Delete ALL history records?')) return;
-  saveHistoryList([]);
-  renderHistory();
-});
-
+document.getElementById('history-delete').addEventListener('click',()=>{if(historySelectedIndex===null)return alert('Select a record first.');if(!confirm('Delete selected history record?'))return;var list=loadHistory();list.splice(historySelectedIndex,1);saveHistoryList(list);historySelectedIndex=null;renderHistory();});
+document.getElementById('history-reopen').addEventListener('click',()=>{if(historySelectedIndex===null)return alert('Select a record first.');var list=loadHistory();var r=list[historySelectedIndex];if(r){restoreCountsFromSnapshot(r.summary||{});currentForm=r.meta||{};if(currentForm){document.getElementById('input-delivery').value=currentForm.delivery||'';document.getElementById('input-vehicle-no').value=currentForm.vehicleNo||'';document.getElementById('input-country').value=currentForm.region||'';document.getElementById('input-driver').value=currentForm.driver||'';document.getElementById('input-bundle-ref').value=currentForm.bundleRef||'';document.getElementById('auto-flag').textContent=currentForm.flag||'';fillDateTimeInputs();updateFormPreview();}showPage('page-scanner');}});
+document.getElementById('del-all-history').addEventListener('click',()=>{if(!confirm('Delete ALL history records?'))return;saveHistoryList([]);renderHistory();});
 document.getElementById('btn-export').addEventListener('click',exportCSV);
 
-/* ================================
-   COUNTRY TO FLAG CONVERSION
-   ================================ */
+/* COUNTRY TO FLAG */
+const COUNTRY_LOOKUP={"qatar":"QA","uae":"AE","united arab emirates":"AE","saudi arabia":"SA","kuwait":"KW","oman":"OM","bahrain":"BH","india":"IN","pakistan":"PK","united states":"US","usa":"US","united kingdom":"GB","uk":"GB","canada":"CA","australia":"AU","egypt":"EG","turkey":"TR","germany":"DE","france":"FR","spain":"ES","italy":"IT","china":"CN","japan":"JP","south korea":"KR"};
+function countryNameToISO(name){if(!name)return null;var s=name.trim().toLowerCase();if(s.length===2&&/^[a-z]{2}$/.test(s))return s.toUpperCase();if(COUNTRY_LOOKUP[s])return COUNTRY_LOOKUP[s];var emoji=name.match(/[\u{1F1E6}-\u{1F1FF}]{2}/u);if(emoji)return null;return null;}
+function isoToFlag(iso){if(!iso||iso.length!==2)return'';return[...iso.toUpperCase()].map(c=>String.fromCodePoint(127397+c.charCodeAt(0))).join('');}
+function updateFlagFromCountryInput(){var v=document.getElementById('input-country').value||'';var emoji=v.match(/[\u{1F1E6}-\u{1F1FF}]{2}/u);if(emoji){document.getElementById('auto-flag').textContent=emoji[0];return;}var iso=countryNameToISO(v);if(iso){document.getElementById('auto-flag').textContent=isoToFlag(iso);return;}var tokens=v.toLowerCase().split(/\s+/).filter(Boolean);for(var t of tokens){if(COUNTRY_LOOKUP[t]){document.getElementById('auto-flag').textContent=isoToFlag(COUNTRY_LOOKUP[t]);return;}}document.getElementById('auto-flag').textContent='';}
 
-const COUNTRY_LOOKUP = {
-  "qatar":"QA","uae":"AE","united arab emirates":"AE","saudi arabia":"SA","kuwait":"KW","oman":"OM","bahrain":"BH",
-  "india":"IN","pakistan":"PK","united states":"US","usa":"US","united kingdom":"GB","uk":"GB","canada":"CA","australia":"AU",
-  "egypt":"EG","turkey":"TR","germany":"DE","france":"FR","spain":"ES","italy":"IT","china":"CN","japan":"JP","south korea":"KR"
-};
+/* INITIALIZATION */
+refreshUI();fillDateTimeInputs();updateFlagFromCountryInput();
+document.getElementById('manualQr').addEventListener('keydown',function(e){if(e.ctrlKey&&e.key==='Enter'){document.getElementById('btn-add-manual').click();}});
+document.getElementById('previewModal').addEventListener('click',function(ev){if(ev.target===document.getElementById('previewModal')){document.getElementById('previewModal').classList.remove('active');}});
 
-function countryNameToISO(name){
-  if(!name) return null;
-  const s = name.trim().toLowerCase();
-  if(s.length===2 && /^[a-z]{2}$/.test(s)) return s.toUpperCase();
-  if(COUNTRY_LOOKUP[s]) return COUNTRY_LOOKUP[s];
-  const emoji = name.match(/[\u{1F1E6}-\u{1F1FF}]{2}/u);
-  if(emoji) return null;
-  return null;
-}
-
-function isoToFlag(iso){
-  if(!iso || iso.length!==2) return '';
-  return [...iso.toUpperCase()]
-    .map(c => String.fromCodePoint(127397 + c.charCodeAt(0)))
-    .join('');
-}
-
-function updateFlagFromCountryInput(){
-  const v = document.getElementById('input-country').value || '';
-  const emoji = v.match(/[\u{1F1E6}-\u{1F1FF}]{2}/u);
-  
-  if(emoji){
-    document.getElementById('auto-flag').textContent = emoji[0];
-    return;
-  }
-  
-  const iso = countryNameToISO(v);
-  if(iso){
-    document.getElementById('auto-flag').textContent = isoToFlag(iso);
-    return;
-  }
-  
-  const tokens = v.toLowerCase().split(/\s+/).filter(Boolean);
-  for(const t of tokens){
-    if(COUNTRY_LOOKUP[t]){
-      document.getElementById('auto-flag').textContent = isoToFlag(COUNTRY_LOOKUP[t]);
-      return;
-    }
-  }
-  
-  document.getElementById('auto-flag').textContent = '';
-}
-
-/* ================================
-   INITIALIZATION
-   ================================ */
-
-refreshUI();
-fillDateTimeInputs();
-updateFlagFromCountryInput();
-
-document.getElementById('manualQr').addEventListener('keydown',(e)=>{
-  if(e.ctrlKey && e.key==='Enter'){
-    document.getElementById('btn-add-manual').click();
-  }
-});
-
-document.getElementById('previewModal').addEventListener('click',(ev)=>{
-  if(ev.target===document.getElementById('previewModal')){
-    document.getElementById('previewModal').classList.remove('active');
-  }
-});
-
+/* RIPPLE EFFECT */
+document.addEventListener('click',function(e){var btn=e.target.closest('.btn');if(!btn)return;var ripple=document.createElement('span');ripple.className='ripple';var rect=btn.getBoundingClientRect();var size=Math.max(rect.width,rect.height);ripple.style.width=ripple.style.height=size+'px';ripple.style.left=(e.clientX-rect.left-size/2)+'px';ripple.style.top=(e.clientY-rect.top-size/2)+'px';btn.appendChild(ripple);setTimeout(function(){ripple.remove();},600);});
 </script>
 </body>
 </html>
